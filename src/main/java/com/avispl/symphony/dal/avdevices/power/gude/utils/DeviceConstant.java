@@ -3,6 +3,8 @@
  */
 package com.avispl.symphony.dal.avdevices.power.gude.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * Set of constants
  *
@@ -36,6 +38,8 @@ public class DeviceConstant {
 	public static final String HOUR_MINUTE_SECOND_UNIT = "h:m:s";
 	public static final String DEG_C_UNIT = "degC";
 	public static final String CELSIUS_UNIT = "C";
+	public static final String AMPE_UNIT = "A";
+	public static final String MILLI_AMPE_UNIT = "mA";
 	public static final float DEFAULT_FOR_NULL_VALUE = 0f;
 	public static final int MIN_WAITING_TIME = 1;
 	public static final int MAX_WAITING_TIME = 100;
@@ -44,5 +48,6 @@ public class DeviceConstant {
 	public static final int ON_OFF_SWITCH_API_FACTOR = 2;
 	public static final String DEFAULT_WAITING_TIME = "5";
 	public static final int INDEX_TO_ORDINAL_CONVERT_FACTOR = 1;
+	public static final float UNIT_TO_MILLI_CONVERT_FACTOR = 1000f;
 }
 

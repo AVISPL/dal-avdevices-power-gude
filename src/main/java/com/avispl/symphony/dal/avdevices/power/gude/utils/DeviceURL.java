@@ -15,7 +15,7 @@ public class DeviceURL {
 	private DeviceURL() {
 	}
 
-	public static final String FIRST_LOGIN = "/dashboard.html";
-	public static final String DEVICE_MONITORING = "/statusjsn.js?components=9029395";
-	public static final String DEVICE_CONFIG = "/statusjsn.js?components=769";
+	public static final String FIRST_LOGIN = "/statusjsn.js?components=2";
+	public static final String DEVICE_MONITORING = "/statusjsn.js?components=8470545";
+	public static final String DEVICE_CONFIG = "/statusjsn.js?components=1";
 }

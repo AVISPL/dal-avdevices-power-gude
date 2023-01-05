@@ -30,6 +30,7 @@ class GudePDU8045CommunicatorTest {
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);
+		communicator.setConfigManagement("true");
 		communicator.init();
 		communicator.connect();
 	}
@@ -46,6 +47,10 @@ class GudePDU8045CommunicatorTest {
 	@Test
 	void testGudePDUCommunicatorGetMonitoringDataSuccessful() throws Exception {
 		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		communicator.getMultipleStatistics();
+		communicator.getMultipleStatistics();
+		communicator.getMultipleStatistics();
+		communicator.getMultipleStatistics();
 		communicator.getMultipleStatistics();
 	}
 
@@ -137,7 +142,7 @@ class GudePDU8045CommunicatorTest {
 		communicator.getMultipleStatistics();
 
 		propertyName = "PowerPort01" + DeviceConstant.HASH + "ApplyChanges";
-		propertyValue = "";
+		propertyValue = "1";
 		controllableProperty.setProperty(propertyName);
 		controllableProperty.setValue(propertyValue);
 		communicator.controlProperty(controllableProperty);

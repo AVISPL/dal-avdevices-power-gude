@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.CollectionUtils;
 
 import javax.security.auth.login.FailedLoginException;
 import org.apache.http.Header;
@@ -107,11 +108,39 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private final ReentrantLock reentrantLock = new ReentrantLock();
 
+	/**
+	 * store configManagement adapter properties
+	 */
+	private String configManagement;
+
+	/**
+	 * configManagement in boolean value
+	 */
+	private boolean isConfigManagement;
+
+	/**
+	 * Retrieves {@link #configManagement}
+	 *
+	 * @return value of {@link #configManagement}
+	 */
+	public String getConfigManagement() {
+		return configManagement;
+	}
+
+	/**
+	 * Sets {@link #configManagement} value
+	 *
+	 * @param configManagement new value of {@link #configManagement}
+	 */
+	public void setConfigManagement(String configManagement) {
+		this.configManagement = configManagement;
+	}
+
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		if (logger.isDebugEnabled()) {
 			logger.debug(
-					String.format("Getting statistics from the device Panasonic camera UE150 at host %s with port %s", this.host,
+					String.format("Getting statistics from the device Gude PDU 8045 at host %s with port %s", this.host,
 							this.getPort()));
 		}
 		reentrantLock.lock();
@@ -125,8 +154,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				if (StringUtils.isNullOrEmpty(authorizationHeader)) {
 					login();
 				}
-				retrieveDeviceMonitoring(stats, dynamicStats, advancedControllableProperties);
+				retrieveDeviceMonitoringData(stats, dynamicStats, advancedControllableProperties);
 				extendedStatistics.setStatistics(stats);
+				extendedStatistics.setDynamicStatistics(dynamicStats);
 				extendedStatistics.setControllableProperties(advancedControllableProperties);
 				localExtendedStatistics = extendedStatistics;
 			}
@@ -174,12 +204,17 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 	@Override
 	public void controlProperties(List<ControllableProperty> list) throws Exception {
-		//ToDo:
+		if (CollectionUtils.isEmpty(list)) {
+			throw new IllegalArgumentException("GudePDU8045Communicator: Controllable properties cannot be null or empty");
+		}
+		for (ControllableProperty controllableProperty : list) {
+			controlProperty(controllableProperty);
+		}
 	}
 
 	@Override
 	protected void authenticate() throws Exception {
-		//ToDo:
+		// The device has its own authentication behavior, do not use the common one
 	}
 
 	/**
@@ -206,8 +241,24 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		supportedSensorTypes = SupportedSensorType.getSupportedSensorTypesCode();
 		supportedSensorFields = SupportedSensorField.getSupportedSensorFields();
 		initValueForWaitingTimeValues();
+		isValidConfigManagement();
 		super.internalInit();
 	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected void internalDestroy() {
+		if (localExtendedStatistics != null && localExtendedStatistics.getStatistics() != null) {
+			localExtendedStatistics.getStatistics().clear();
+		}
+		if (localExtendedStatistics != null && localExtendedStatistics.getControllableProperties() != null) {
+			localExtendedStatistics.getControllableProperties().clear();
+		}
+		super.internalDestroy();
+	}
+
 
 	/**
 	 * If addressed too frequently, Sembient API may respond with 429 code, meaning that the call rate per second was reached.
@@ -224,6 +275,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			if (retryOnUnauthorized) {
 				login();
 				return doGetWithRetryOnUnauthorized(url, clazz, false);
+			}else {
+				logger.error("retry failed");
 			}
 		}
 		return null;
@@ -288,17 +341,17 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param advancedControllableProperties store all controllable properties
 	 * @throws FailedLoginException when login fails
 	 */
-	private void retrieveDeviceMonitoring(Map<String, String> stats, Map<String, String> dynamicStats, List<AdvancedControllableProperty> advancedControllableProperties) throws FailedLoginException {
+	private void retrieveDeviceMonitoringData(Map<String, String> stats, Map<String, String> dynamicStats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_MONITORING);
 		try {
 			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, MonitoringStatus.class, true);
 			if (cachedMonitoringStatus != null) {
 				populateDeviceMonitoring(stats, dynamicStats, advancedControllableProperties);
 			} else {
-				updateFailedMonitor(DevicesMetricGroup.DEVICE_INFO.getName(), "Error while retrieving Device and Sensor data: response data is empty");
+				throw new ResourceNotReachableException("Error while retrieving Device and Sensor data: response data is empty");
 			}
 		} catch (Exception e) {
-			updateFailedMonitor(DevicesMetricGroup.DEVICE_INFO.getName(), String.format("Error while retrieving Device and Sensor data: %s", e.getMessage()));
+			throw new ResourceNotReachableException(String.format("Error while retrieving Device and Sensor data: %s", e.getMessage()), e);
 		}
 	}
 
@@ -398,13 +451,22 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					value = String.format(numberFormat, Optional.ofNullable(sensorFieldValue.getPropertyValue()).orElse(DeviceConstant.DEFAULT_FOR_NULL_VALUE));
 
 					// handle special case:
-					// convert duration time in second to hh:mm:ss format
+					// 1. convert duration time in second to hh:mm:ss format
 					if (fieldName.equals(SupportedSensorField.RELATIVE_TIME.getUiName())) {
 						unit = DeviceConstant.HOUR_MINUTE_SECOND_UNIT;
 						value = convertSecondToDuration(Long.parseLong(value));
 					}
-					if (unit.equals(DeviceConstant.DEG_C_UNIT)) {
-						unit = DeviceConstant.CELSIUS_UNIT;
+					// 2. normalize unit
+					switch (unit) {
+						case DeviceConstant.DEG_C_UNIT:
+							unit = DeviceConstant.CELSIUS_UNIT;
+							break;
+						case DeviceConstant.AMPE_UNIT:
+							unit = DeviceConstant.MILLI_AMPE_UNIT;
+							value = String.valueOf(sensorFieldValue.getPropertyValue() * DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR);
+							break;
+						default:
+							break;
 					}
 
 					String propertyName;
@@ -418,14 +480,22 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 					// store historical data
 					if (isHistorical) {
-						dynamicStats.put(fieldName, value);
+						dynamicStats.put(propertyName, value);
 					}
 
 					// populate advance monitoring data
 					if (!isContainAdvanceMonitoringData && isAdvanceMonitoringGroups.get(groupName)) {
 						List<Float> statsValues = sensorFieldValue.getAdvanceData();
 						for (int indexOfSensorPropertyStats = 0; indexOfSensorPropertyStats < sensorPropertyStats.size(); indexOfSensorPropertyStats++) {
-							stats.put(String.format("%s%s%s(%s)", groupName, fieldName, toPascalCase(sensorPropertyStats.get(indexOfSensorPropertyStats)), unit),
+							String advancePropertyName = toPascalCase(sensorPropertyStats.get(indexOfSensorPropertyStats));
+							if (advancePropertyName.contains("Max")) {
+								advancePropertyName = advancePropertyName.replaceAll("Max", "Maximum");
+							}
+							if (advancePropertyName.contains("Min")) {
+								advancePropertyName = advancePropertyName.replaceAll("Min", "Minimum");
+
+							}
+							stats.put(String.format("%s%s%s(%s)", groupName, fieldName, advancePropertyName, unit),
 									String.format(numberFormat, Optional.ofNullable(statsValues.get(indexOfSensorPropertyStats)).orElse(DeviceConstant.DEFAULT_FOR_NULL_VALUE)));
 						}
 					}
@@ -533,8 +603,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String waitingTime = output.getWaitingTime();
 
 		stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName()));
-		stats.put(groupName.concat(OutputControllingMetric.EDITED), String.valueOf(isOutputsControlEdited.get(outputIndex)));
-		addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
+		if (isConfigManagement) {
+			stats.put(groupName.concat(OutputControllingMetric.EDITED), String.valueOf(isOutputsControlEdited.get(outputIndex)));
+			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
+		}
 
 		Set<String> unusedKeys = new HashSet<>();
 		if (isOutputsControlEdited.get(outputIndex)) {
@@ -731,11 +803,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			minutes %= 60;
 			if (hours >= 24) {
 				long days = hours / 24;
-				return String.format("%d d %02d:%02d:%02d", days, hours % 24, minutes, seconds);
+				return String.format("%d day(s) %d hour(s) %d minutes(s) %d second(s)", days, hours % 24, minutes, seconds);
 			}
-			return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+			return String.format("%d hour(s) %d minutes(s) %d second(s)", hours, minutes, seconds);
 		}
-		return String.format("00:%02d:%02d", minutes, seconds);
+		return String.format("%d minutes(s) %d second(s)", minutes, seconds);
 	}
 
 	/**
@@ -779,5 +851,14 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private String getDefaultValueForNullData(String value) {
 		return StringUtils.isNullOrEmpty(value) ? DeviceConstant.NONE : value;
+	}
+
+	/**
+	 * This method is used to validate input config management from user
+	 *
+	 * @return boolean is configManagement
+	 */
+	private void isValidConfigManagement() {
+		isConfigManagement = StringUtils.isNotNullOrEmpty(this.configManagement) && this.configManagement.equalsIgnoreCase(String.valueOf(true));
 	}
 }
