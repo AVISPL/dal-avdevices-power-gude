@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Set of fan status
+ * Set of supported sensor type
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 12/27/2022

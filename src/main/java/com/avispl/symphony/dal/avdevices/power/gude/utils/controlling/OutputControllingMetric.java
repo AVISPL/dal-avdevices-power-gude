@@ -4,7 +4,7 @@
 package com.avispl.symphony.dal.avdevices.power.gude.utils.controlling;
 
 /**
- * Set of constants
+ * Set of output controlling metric
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 12/25/2022

@@ -1,3 +1,6 @@
+/*
+ *  Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.powerport;
 
 import java.util.ArrayList;
@@ -7,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * PowerPort
+ * set of PowerPort data
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 21/12/2022

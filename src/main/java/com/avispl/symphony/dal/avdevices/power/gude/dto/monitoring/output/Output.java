@@ -1,3 +1,6 @@
+/*
+ *  Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.output;
 
 import java.util.ArrayList;
@@ -11,7 +14,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputStat
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WaitingTimeUnit;
 
 /**
- * Output
+ * Set of Output status data
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 01/01/2023

@@ -1,10 +1,12 @@
 package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor;
-
+/*
+ *  Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * SensorFields
+ * Sensor Fields
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 21/12/2022

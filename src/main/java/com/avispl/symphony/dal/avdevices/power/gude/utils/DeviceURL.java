@@ -12,6 +12,9 @@ package com.avispl.symphony.dal.avdevices.power.gude.utils;
  */
 public class DeviceURL {
 
+	/**
+	 * private/ non-parameterized constructor to prevent instance initialization
+	 */
 	private DeviceURL() {
 	}
 

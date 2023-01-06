@@ -6,7 +6,7 @@ package com.avispl.symphony.dal.avdevices.power.gude.utils.controlling;
 import java.util.Arrays;
 
 /**
- * Set of output status
+ * Set of output status mode
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 12/27/2022
