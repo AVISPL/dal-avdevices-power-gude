@@ -1,3 +1,6 @@
+/*
+ *  Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.avdevices.power.gude;
 
 import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createDropdown;
@@ -36,7 +39,7 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
-import com.avispl.symphony.dal.avdevices.power.gude.dto.MonitoringStatus;
+import com.avispl.symphony.dal.avdevices.power.gude.dto.DeviceMonitoringData;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.misc.Misc;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.output.Output;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.SensorDescription;
@@ -48,7 +51,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.AuthorizationChallenge
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceInfoMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceURL;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.DropdownList;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.EnumTypeHandler;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorField;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorType;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputControllingMetric;
@@ -72,7 +75,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 	private boolean isEmergencyDelivery;
 	private ExtendedStatistics localExtendedStatistics = new ExtendedStatistics();
-	private MonitoringStatus cachedMonitoringStatus;
+	private DeviceMonitoringData cachedMonitoringStatus;
 
 	private Map<String, Boolean> isAdvanceMonitoringGroups = new HashMap<>();
 	private List<Boolean> isOutputsControlEdited = new ArrayList<>();
@@ -221,7 +224,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						}
 						break;
 					default:
-						break;
+						throw new IllegalStateException(String.format("Controllable property %s is not supported", property));
 				}
 			}
 		} finally {
@@ -348,6 +351,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	}
 
 	/**
+	 * Build full path for http request
+	 *
 	 * @param path url of the request
 	 * @return String full path of the device
 	 */
@@ -371,7 +376,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private void retrieveDeviceMonitoringData(Map<String, String> stats, Map<String, String> dynamicStats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_MONITORING);
 		try {
-			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, MonitoringStatus.class, true);
+			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
 			if (cachedMonitoringStatus != null) {
 				populateDeviceMonitoring(stats, dynamicStats, advancedControllableProperties);
 			} else {
@@ -493,6 +498,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 							value = String.valueOf(sensorFieldValue.getPropertyValue() * DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR);
 							break;
 						default:
+							logger.debug(String.format("un-required normalized unit: %s", unit));
 							break;
 					}
 
@@ -535,6 +541,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * populate device info
 	 *
 	 * @param stats store all statistics
+	 * @param advancedControllableProperties store all controllable properties
 	 */
 	public void populateDeviceInfo(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		Misc misc = cachedMonitoringStatus.getMisc();
@@ -581,6 +588,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 *
 	 * @param stats store all statistics
 	 * @param advancedControllableProperties store all controllable properties
+	 * @param outputIndex index of output
 	 */
 	private void populateOutputsControl(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, int outputIndex) {
 		Output realtimeOutputConfig = cachedMonitoringStatus.getOutputs().get(outputIndex);
@@ -613,9 +621,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String batchCountDown = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING);
 		String applyChangesLabel = groupName.concat(OutputControllingMetric.APPLY_CHANGES);
 		String cancelChangesLabel = groupName.concat(OutputControllingMetric.CANCEL_CHANGES);
-		List<String> outputModes = DropdownList.getListOfEnumNames(OutputMode.class, OutputMode.ERROR);
-		List<String> batchSwitchModes = DropdownList.getListOfEnumNames(OutputStatus.class, OutputStatus.ERROR);
-		List<String> batchWaitingTimeUnitModes = DropdownList.getListOfEnumNames(WaitingTimeUnit.class, WaitingTimeUnit.ERROR);
+		List<String> outputModes = EnumTypeHandler.getListOfEnumNames(OutputMode.class, OutputMode.ERROR);
+		List<String> batchSwitchModes = EnumTypeHandler.getListOfEnumNames(OutputStatus.class, OutputStatus.ERROR);
+		List<String> batchWaitingTimeUnitModes = EnumTypeHandler.getListOfEnumNames(WaitingTimeUnit.class, WaitingTimeUnit.ERROR);
 
 		List<Integer> batch = output.getBatch();
 		OutputStatus batchInitSwitchValue = OutputStatus.getByAPIName(String.valueOf(batch.get(DeviceConstant.INIT_SWITCH_INDEX) % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
@@ -652,7 +660,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchWaitingTimeUnitLabel, batchWaitingTimeUnitModes, waitingTimeUnit.getUiName()));
 					break;
 				default:
-					break;
+					throw new IllegalStateException(String.format("Power port mode %s is not supported", outputMode));
 			}
 			addAdvanceControlProperties(advancedControllableProperties, stats, createButton(applyChangesLabel, DeviceConstant.APPLY, DeviceConstant.APPLYING));
 			addAdvanceControlProperties(advancedControllableProperties, stats, createButton(cancelChangesLabel, DeviceConstant.CANCEL, DeviceConstant.CANCELING));
@@ -674,6 +682,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param advancedControllableProperties store all controllable properties
 	 * @param controllableProperty controllable property
 	 * @param value value of controllable property
+	 * @param outputIndex index of output
 	 */
 	private void powerPortControl(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, String controllableProperty, String value, int outputIndex) {
 		Output cachedOutput = cachedOutputsControl.get(outputIndex);
@@ -711,7 +720,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				isOutputsControlEdited.set(outputIndex, false);
 				break;
 			default:
-				break;
+				throw new IllegalStateException(String.format("Controllable property %s is not supported", controllableProperty));
 		}
 		cachedOutputsControl.set(outputIndex, cachedOutput);
 		populateOutputsControl(stats, advancedControllableProperties, outputIndex);
@@ -727,9 +736,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private Output performPowerPortControl(Output cachedOutput) {
 		try {
 			String request = buildDeviceFullPath(cachedOutput.contributeOutputControlRequest());
-			MonitoringStatus monitoringStatus = doGetWithRetryOnUnauthorized(request, MonitoringStatus.class, true);
+			DeviceMonitoringData monitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
 			if (cachedOutput.getPortNumber() != "all") {
-				Output output = Optional.ofNullable(monitoringStatus).map(MonitoringStatus::getOutputs)
+				Output output = Optional.ofNullable(monitoringStatus).map(DeviceMonitoringData::getOutputs)
 						.map(outputs1 -> outputs1.get(Integer.parseInt(cachedOutput.getPortNumber()) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR)).orElse(cachedOutput);
 				output.setGroupName(cachedOutput.getGroupName());
 				output.setWaitingTime(cachedOutput.getWaitingTime());

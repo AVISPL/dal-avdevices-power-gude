@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Set of fan status
+ * Set of supported sensor field
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 12/27/2022

@@ -1,3 +1,6 @@
+/*
+ *  Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor;
 
 import java.util.ArrayList;
@@ -11,7 +14,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * SensorValues
+ * Actual values of available sensors (temperature, etc.)
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 21/12/2022

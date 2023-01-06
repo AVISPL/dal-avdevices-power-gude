@@ -10,18 +10,18 @@ import java.util.List;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 
 /**
- * DropdownList
+ * EnumTypeHandler
  *
  * @author Harry / Symphony Dev Team<br>
- * Created on 10/28/2022
+ * Created on 12/28/2022
  * @since 1.0.0
  */
-public class DropdownList {
+public class EnumTypeHandler {
 
 	/**
 	 * private/ non-parameterized constructor to prevent instance initialization
 	 */
-	private DropdownList() {
+	private EnumTypeHandler() {
 	}
 
 	/**

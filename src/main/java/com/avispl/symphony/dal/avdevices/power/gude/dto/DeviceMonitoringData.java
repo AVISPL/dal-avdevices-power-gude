@@ -1,3 +1,6 @@
+/*
+ *  Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.avdevices.power.gude.dto;
 
 import java.util.ArrayList;
@@ -13,14 +16,14 @@ import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.Sensor
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.SensorValue;
 
 /**
- * Monitoring Status
+ * Device's Monitoring data
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 21/12/2022
  * @since 1.0.0
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class MonitoringStatus {
+public class DeviceMonitoringData {
 
 	@JsonAlias("outputs")
 	private List<PowerPort> powerPort;
