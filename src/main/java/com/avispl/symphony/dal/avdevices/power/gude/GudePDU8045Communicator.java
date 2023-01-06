@@ -70,7 +70,6 @@ import com.avispl.symphony.dal.util.StringUtils;
  */
 public class GudePDU8045Communicator extends RestCommunicator implements Monitorable, Controller {
 
-	private Map<String, String> failedMonitor = new HashMap<>();
 	private boolean isEmergencyDelivery;
 	private ExtendedStatistics localExtendedStatistics = new ExtendedStatistics();
 	private MonitoringStatus cachedMonitoringStatus;
@@ -327,7 +326,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				}
 			}
 
-			Header header = response.getFirstHeader((AuthorizationChallengeHandler.WWW_AUTHENTICATE));
+			Header header = response.getFirstHeader(AuthorizationChallengeHandler.WWW_AUTHENTICATE);
 			if (header != null) {
 				String headerResponseString = response.getFirstHeader(AuthorizationChallengeHandler.WWW_AUTHENTICATE).toString();
 				if (response.getStatusLine().getStatusCode() == HttpStatus.UNAUTHORIZED.value() && StringUtils.isNotNullOrEmpty(headerResponseString)) {
