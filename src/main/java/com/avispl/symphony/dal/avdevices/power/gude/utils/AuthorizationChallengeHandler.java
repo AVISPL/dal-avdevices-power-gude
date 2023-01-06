@@ -23,21 +23,6 @@ import com.avispl.symphony.dal.util.StringUtils;
  * @since 1.0.0
  */
 public class AuthorizationChallengeHandler {
-	/*
-	 * RFC 2617 and 7616 specifies these characters to use when creating a hex string.
-	 */
-	private static final String BASIC = "Basic ";
-	private static final String DIGEST = "Digest ";
-
-	/**
-	 * Header representing a server requesting authentication.
-	 */
-	public static final String WWW_AUTHENTICATE = "WWW-Authenticate";
-
-	/**
-	 * Header representing the authorization the client is presenting to a server.
-	 */
-	public static final String AUTHORIZATION = "Authorization";
 
 	private final String username;
 	private final String password;
@@ -62,9 +47,9 @@ public class AuthorizationChallengeHandler {
 	 * @return Authorization header for Basic authentication challenges.
 	 */
 	public final String handleBasic() {
-		authorizationPipeliningType.set(BASIC);
+		authorizationPipeliningType.set(DeviceConstant.BASIC);
 		String token = username + ":" + password;
-		return BASIC + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
+		return DeviceConstant.BASIC + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
 	}
 
 	/**
@@ -80,7 +65,7 @@ public class AuthorizationChallengeHandler {
 			return Collections.emptyMap();
 		}
 
-		if (header.startsWith(BASIC) || header.startsWith(DIGEST)) {
+		if (header.startsWith(DeviceConstant.BASIC) || header.startsWith(DeviceConstant.DIGEST)) {
 			header = header.split(" ", 2)[1];
 		}
 
