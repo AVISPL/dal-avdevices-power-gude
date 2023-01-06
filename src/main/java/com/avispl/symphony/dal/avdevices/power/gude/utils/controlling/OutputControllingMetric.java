@@ -23,6 +23,7 @@ public class OutputControllingMetric {
 	public static final String POWER_PORT_BATCH_END_SWITCH = "PowerPortBatchEndSwitch";
 	public static final String POWER_PORT_BATCH_WAITING_TIME = "PowerPortBatchWaitingTime";
 	public static final String POWER_PORT_BATCH_WAITING_TIME_UNIT = "PowerPortBatchWaitingTimeUnit";
+	public static final String POWER_PORT_BATCH_WAITING_TIME_REMAINING = "PowerPortBatchWaitingTimeRemaining";
 	public static final String POWER_PORT_STATUS = "PowerPortStatus";
 	public static final String APPLY_CHANGES = "ApplyChanges";
 	public static final String CANCEL_CHANGES = "CancelChanges";

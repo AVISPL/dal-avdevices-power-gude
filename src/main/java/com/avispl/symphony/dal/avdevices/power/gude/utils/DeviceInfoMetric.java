@@ -19,7 +19,8 @@ public enum DeviceInfoMetric {
 	ADVANCE_MONITORING("AdvanceMonitoring"),
 	DEVICE_NAME("DeviceName"),
 	FIRMWARE_VERSION("FirmwareVersion"),
-	ALL_POWER_PORT_CONTROL("AllPowerPortControl");
+	ALL_POWER_PORT_CONTROL_OFF("PowerPortAllOff"),
+	ALL_POWER_PORT_CONTROL_ON("PowerPortAllOn");
 
 	private final String name;
 

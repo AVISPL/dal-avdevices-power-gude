@@ -3,8 +3,6 @@
  */
 package com.avispl.symphony.dal.avdevices.power.gude.utils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * Set of constants
  *
@@ -29,6 +27,10 @@ public class DeviceConstant {
 	public static final String DISABLE = "Disable";
 	public static final String APPLY = "Apply";
 	public static final String APPLYING = "Applying";
+	public static final String SWITCHING_ON = "Switching On";
+	public static final String ALL_ON = "All On";
+	public static final String SWITCHING_OFF = "Switching Off";
+	public static final String ALL_OFF = "All Off";
 	public static final String CANCEL = "Cancel";
 	public static final String CANCELING = "Canceling";
 	public static final String BASIC = "Basic ";
@@ -40,9 +42,13 @@ public class DeviceConstant {
 	public static final String CELSIUS_UNIT = "C";
 	public static final String AMPE_UNIT = "A";
 	public static final String MILLI_AMPE_UNIT = "mA";
+	public static final String MIN = "Min";
+	public static final String MINIMUM = "Minimum";
+	public static final String MAXIMUM = "Maximum";
+	public static final String MAX = "Max";
 	public static final float DEFAULT_FOR_NULL_VALUE = 0f;
 	public static final int MIN_WAITING_TIME = 1;
-	public static final int MAX_WAITING_TIME = 100;
+	public static final int MAX_WAITING_TIME = 59;
 	public static final int INIT_SWITCH_INDEX = 2;
 	public static final int END_SWITCH_INDEX = 4;
 	public static final int ON_OFF_SWITCH_API_FACTOR = 2;
