@@ -34,6 +34,7 @@ public class DeviceConstant {
 	public static final String CANCEL = "Cancel";
 	public static final String CANCELING = "Canceling";
 	public static final String BASIC = "Basic ";
+	public static final String DIGEST = "Basic ";
 	public static final String TWO_NUMBER_FORMAT = "%02d";
 	public static final String DEFAULT_DEC_PRECISION_FORMAT = "%.0f";
 	public static final String SPACE_REGEX = "\\s+";
@@ -46,6 +47,7 @@ public class DeviceConstant {
 	public static final String MINIMUM = "Minimum";
 	public static final String MAXIMUM = "Maximum";
 	public static final String MAX = "Max";
+	public static final String ALL_PORT_NUMBER = "all";
 	public static final float DEFAULT_FOR_NULL_VALUE = 0f;
 	public static final int MIN_WAITING_TIME = 1;
 	public static final int MAX_WAITING_TIME = 59;
@@ -55,5 +57,15 @@ public class DeviceConstant {
 	public static final String DEFAULT_WAITING_TIME = "5";
 	public static final int INDEX_TO_ORDINAL_CONVERT_FACTOR = 1;
 	public static final float UNIT_TO_MILLI_CONVERT_FACTOR = 1000f;
+
+	/**
+	 * Header representing a server requesting authentication.
+	 */
+	public static final String WWW_AUTHENTICATE = "WWW-Authenticate";
+
+	/**
+	 * Header representing the authorization the client is presenting to a server.
+	 */
+	public static final String AUTHORIZATION = "Authorization";
 }
 

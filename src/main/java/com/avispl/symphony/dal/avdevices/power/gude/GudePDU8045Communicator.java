@@ -188,22 +188,24 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			}
 			if (property.contains(String.valueOf(DeviceConstant.HASH))) {
 				String[] splitProperty = property.split(String.valueOf(DeviceConstant.HASH));
-				DevicesMetricGroup group = DevicesMetricGroup.getByName(splitProperty[0]);
+				String controlGroup = splitProperty[0];
+				DevicesMetricGroup group = DevicesMetricGroup.getByName(controlGroup);
+
 				switch (group) {
 					case SENSOR:
-						sensorAdvanceMonitoringControl(stats, dynamicStats, advancedControllableProperties, splitProperty[0] + DeviceConstant.HASH, value);
+						sensorAdvanceMonitoringControl(stats, dynamicStats, advancedControllableProperties, controlGroup + DeviceConstant.HASH, value);
 						break;
 					case OUTPUT:
-						int outputIndex = Integer.parseInt(splitProperty[0].substring(DevicesMetricGroup.OUTPUT.getName().length())) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
+						int outputIndex = Integer.parseInt(controlGroup.substring(DevicesMetricGroup.OUTPUT.getName().length())) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
 						powerPortControl(stats, advancedControllableProperties, splitProperty[1], value, outputIndex);
 						break;
 					default:
-						throw new IllegalStateException(String.format("Control group %s is not supported", splitProperty[0]));
+						throw new IllegalStateException(String.format("Control group %s is not supported", controlGroup));
 				}
 			} else {
 				DeviceInfoMetric deviceInfoMetric = DeviceInfoMetric.getByName(property);
 				Output output = new Output();
-				output.setPortNumber("all");
+				output.setPortNumber(DeviceConstant.ALL_PORT_NUMBER);
 				switch (deviceInfoMetric) {
 					case ALL_POWER_PORT_CONTROL_OFF:
 						output.setOutputMode(OutputMode.OFF);
@@ -253,7 +255,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	@Override
 	protected HttpHeaders putExtraRequestHeaders(HttpMethod httpMethod, String uri, HttpHeaders headers) throws Exception {
 		if (StringUtils.isNotNullOrEmpty(authorizationHeader)) {
-			headers.set(AuthorizationChallengeHandler.AUTHORIZATION, authorizationHeader);
+			headers.set(DeviceConstant.AUTHORIZATION, authorizationHeader);
 			headers.set(HttpHeaders.HOST, getHost());
 		}
 		return super.putExtraRequestHeaders(httpMethod, uri, headers);
@@ -329,9 +331,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				}
 			}
 
-			Header header = response.getFirstHeader(AuthorizationChallengeHandler.WWW_AUTHENTICATE);
+			Header header = response.getFirstHeader(DeviceConstant.WWW_AUTHENTICATE);
 			if (header != null) {
-				String headerResponseString = response.getFirstHeader(AuthorizationChallengeHandler.WWW_AUTHENTICATE).toString();
+				String headerResponseString = response.getFirstHeader(DeviceConstant.WWW_AUTHENTICATE).toString();
 				if (response.getStatusLine().getStatusCode() == HttpStatus.UNAUTHORIZED.value() && StringUtils.isNotNullOrEmpty(headerResponseString)) {
 					AuthorizationChallengeHandler authorizationChallengeHandler = new AuthorizationChallengeHandler(getLogin(), getPassword());
 					List<Map<String, String>> challenges = new ArrayList<>();
@@ -502,12 +504,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 							break;
 					}
 
-					String propertyName;
+					String propertyName = String.format("%s%s", groupName, fieldName);
+					stats.put(propertyName, value);
 					if (StringUtils.isNotNullOrEmpty(unit) && !unit.equals(DeviceConstant.NONE)) {
 						propertyName = String.format("%s%s(%s)", groupName, fieldName, unit);
-						stats.put(propertyName, value);
-					} else {
-						propertyName = String.format("%s%s", groupName, fieldName);
 						stats.put(propertyName, value);
 					}
 
@@ -521,12 +521,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						List<Float> statsValues = sensorFieldValue.getAdvanceData();
 						for (int indexOfSensorPropertyStats = 0; indexOfSensorPropertyStats < sensorPropertyStats.size(); indexOfSensorPropertyStats++) {
 							String advancePropertyName = toPascalCase(sensorPropertyStats.get(indexOfSensorPropertyStats));
-							if (advancePropertyName.contains("Max")) {
+							if (advancePropertyName.contains(DeviceConstant.MAX)) {
 								advancePropertyName = advancePropertyName.replaceAll(DeviceConstant.MAX, DeviceConstant.MAXIMUM);
 							}
-							if (advancePropertyName.contains("Min")) {
+							if (advancePropertyName.contains(DeviceConstant.MIN)) {
 								advancePropertyName = advancePropertyName.replaceAll(DeviceConstant.MIN, DeviceConstant.MINIMUM);
-
 							}
 							stats.put(String.format("%s%s%s(%s)", groupName, fieldName, advancePropertyName, unit),
 									String.format(numberFormat, Optional.ofNullable(statsValues.get(indexOfSensorPropertyStats)).orElse(DeviceConstant.DEFAULT_FOR_NULL_VALUE)));

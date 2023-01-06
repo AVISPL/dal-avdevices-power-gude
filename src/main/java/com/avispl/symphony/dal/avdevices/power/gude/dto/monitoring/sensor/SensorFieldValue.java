@@ -1,7 +1,7 @@
-package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor;
 /*
  *  Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
  */
+package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
