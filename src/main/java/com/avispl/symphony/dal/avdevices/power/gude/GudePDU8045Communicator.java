@@ -184,18 +184,46 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				this.logger.debug("controlProperty property " + property);
 				this.logger.debug("controlProperty value " + value);
 			}
-			String[] splitProperty = property.split(String.valueOf(DeviceConstant.HASH));
-			DevicesMetricGroup group = DevicesMetricGroup.getByName(splitProperty[0]);
-			switch (group) {
-				case SENSOR:
-					sensorAdvanceMonitoringControl(stats, dynamicStats, advancedControllableProperties, splitProperty[0] + DeviceConstant.HASH, value);
-					break;
-				case OUTPUT:
-					int outputIndex = Integer.parseInt(splitProperty[0].substring(DevicesMetricGroup.OUTPUT.getName().length())) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
-					powerPortControl(stats, advancedControllableProperties, splitProperty[1], value, outputIndex);
-					break;
-				default:
-					throw new IllegalStateException(String.format("Control group %s is not supported", splitProperty[0]));
+			if (property.contains(String.valueOf(DeviceConstant.HASH))) {
+				String[] splitProperty = property.split(String.valueOf(DeviceConstant.HASH));
+				DevicesMetricGroup group = DevicesMetricGroup.getByName(splitProperty[0]);
+				switch (group) {
+					case SENSOR:
+						sensorAdvanceMonitoringControl(stats, dynamicStats, advancedControllableProperties, splitProperty[0] + DeviceConstant.HASH, value);
+						break;
+					case OUTPUT:
+						int outputIndex = Integer.parseInt(splitProperty[0].substring(DevicesMetricGroup.OUTPUT.getName().length())) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
+						powerPortControl(stats, advancedControllableProperties, splitProperty[1], value, outputIndex);
+						break;
+					default:
+						throw new IllegalStateException(String.format("Control group %s is not supported", splitProperty[0]));
+				}
+			} else {
+				DeviceInfoMetric deviceInfoMetric = DeviceInfoMetric.getByName(property);
+				Output output = new Output();
+				output.setPortNumber("all");
+				switch (deviceInfoMetric) {
+					case ALL_POWER_PORT_CONTROL_OFF:
+						output.setOutputMode(OutputMode.OFF);
+						performPowerPortControl(output);
+						try {
+							Thread.sleep(8000);
+						} catch (InterruptedException e) {
+							logger.error(String.format("error while control %s: %s", controllableProperty, e.getMessage()));
+						}
+						break;
+					case ALL_POWER_PORT_CONTROL_ON:
+						output.setOutputMode(OutputMode.ON);
+						performPowerPortControl(output);
+						try {
+							Thread.sleep(8000);
+						} catch (InterruptedException e) {
+							logger.error(String.format("error while control %s: %s", controllableProperty, e.getMessage()));
+						}
+						break;
+					default:
+						break;
+				}
 			}
 		} finally {
 			reentrantLock.unlock();
@@ -275,7 +303,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			if (retryOnUnauthorized) {
 				login();
 				return doGetWithRetryOnUnauthorized(url, clazz, false);
-			}else {
+			} else {
 				logger.error("retry failed");
 			}
 		}
@@ -374,7 +402,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					populateSensorData(stats, dynamicStats, advancedControllableProperties, sensorValue.getSensorSupportedValues(), sensorDescription);
 				}
 			}
-			populateDeviceInfo(stats);
+			populateDeviceInfo(stats, advancedControllableProperties);
 
 			for (int outputIndex = 0; outputIndex < cachedMonitoringStatus.getOutputs().size(); outputIndex++) {
 				populateOutputsControl(stats, advancedControllableProperties, outputIndex);
@@ -489,10 +517,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						for (int indexOfSensorPropertyStats = 0; indexOfSensorPropertyStats < sensorPropertyStats.size(); indexOfSensorPropertyStats++) {
 							String advancePropertyName = toPascalCase(sensorPropertyStats.get(indexOfSensorPropertyStats));
 							if (advancePropertyName.contains("Max")) {
-								advancePropertyName = advancePropertyName.replaceAll("Max", "Maximum");
+								advancePropertyName = advancePropertyName.replaceAll(DeviceConstant.MAX, DeviceConstant.MAXIMUM);
 							}
 							if (advancePropertyName.contains("Min")) {
-								advancePropertyName = advancePropertyName.replaceAll("Min", "Minimum");
+								advancePropertyName = advancePropertyName.replaceAll(DeviceConstant.MIN, DeviceConstant.MINIMUM);
 
 							}
 							stats.put(String.format("%s%s%s(%s)", groupName, fieldName, advancePropertyName, unit),
@@ -509,22 +537,16 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 *
 	 * @param stats store all statistics
 	 */
-	public void populateDeviceInfo(Map<String, String> stats) {
+	public void populateDeviceInfo(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		Misc misc = cachedMonitoringStatus.getMisc();
 		if (misc != null) {
 			stats.put(DeviceInfoMetric.DEVICE_NAME.getName(), misc.getProductName());
 			stats.put(DeviceInfoMetric.FIRMWARE_VERSION.getName(), misc.getFirmware());
+			addAdvanceControlProperties(advancedControllableProperties, stats,
+					createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_OFF.getName(), DeviceConstant.ALL_OFF, DeviceConstant.SWITCHING_OFF));
+			addAdvanceControlProperties(advancedControllableProperties, stats,
+					createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_ON.getName(), DeviceConstant.ALL_ON, DeviceConstant.SWITCHING_ON));
 		}
-	}
-
-	/**
-	 * Update failedMonitor with getting device info error message
-	 *
-	 * @param monitoringGroup is monitoring metric group
-	 * @param errorMessage is error message
-	 */
-	private void updateFailedMonitor(String monitoringGroup, String errorMessage) {
-		failedMonitor.put(monitoringGroup, errorMessage);
 	}
 
 	/**
@@ -589,6 +611,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String batchEndSwitchLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_END_SWITCH);
 		String batchWaitingTimeLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME);
 		String batchWaitingTimeUnitLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_UNIT);
+		String batchCountDown = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING);
 		String applyChangesLabel = groupName.concat(OutputControllingMetric.APPLY_CHANGES);
 		String cancelChangesLabel = groupName.concat(OutputControllingMetric.CANCEL_CHANGES);
 		List<String> outputModes = DropdownList.getListOfEnumNames(OutputMode.class, OutputMode.ERROR);
@@ -601,6 +624,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		OutputMode outputMode = output.getOutputMode();
 		WaitingTimeUnit waitingTimeUnit = output.getWaitingTimeUnit();
 		String waitingTime = output.getWaitingTime();
+		if (batch.get(1) != 0) {
+			String remainingTime = convertSecondToDuration(batch.get(1));
+			stats.put(batchCountDown, String.format("Switch to %s in %s", batchInitSwitchValue.getUiName(), remainingTime));
+		}
 
 		stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName()));
 		if (isConfigManagement) {
@@ -702,14 +729,17 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		try {
 			String request = buildDeviceFullPath(cachedOutput.contributeOutputControlRequest());
 			MonitoringStatus monitoringStatus = doGetWithRetryOnUnauthorized(request, MonitoringStatus.class, true);
-			Output output = Optional.ofNullable(monitoringStatus).map(MonitoringStatus::getOutputs)
-					.map(outputs1 -> outputs1.get(Integer.parseInt(cachedOutput.getPortNumber()) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR)).orElse(cachedOutput);
-			output.setGroupName(cachedOutput.getGroupName());
-			output.setWaitingTime(cachedOutput.getWaitingTime());
-			output.setWaitingTimeUnit(cachedOutput.getWaitingTimeUnit());
-			output.setOutputMode(cachedOutput.getOutputMode());
-			output.setPortNumber(cachedOutput.getPortNumber());
-			return output;
+			if (cachedOutput.getPortNumber() != "all") {
+				Output output = Optional.ofNullable(monitoringStatus).map(MonitoringStatus::getOutputs)
+						.map(outputs1 -> outputs1.get(Integer.parseInt(cachedOutput.getPortNumber()) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR)).orElse(cachedOutput);
+				output.setGroupName(cachedOutput.getGroupName());
+				output.setWaitingTime(cachedOutput.getWaitingTime());
+				output.setWaitingTimeUnit(cachedOutput.getWaitingTimeUnit());
+				output.setOutputMode(cachedOutput.getOutputMode());
+				output.setPortNumber(cachedOutput.getPortNumber());
+				return output;
+			}
+			return null;
 		} catch (Exception e) {
 			throw new IllegalStateException(String.format("Error while control power port %s: %s", cachedOutput.getPortNumber(), e.getMessage()), e);
 		}

@@ -11,6 +11,7 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceInfoMetric;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.DevicesMetricGroup;
 
 /**
@@ -25,10 +26,10 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("172.16.251.101");
+		communicator.setHost("***REMOVED***");
 		communicator.setPort(80);
 		communicator.setLogin("admin");
-		communicator.setPassword("admin");
+		communicator.setPassword("admin2022");
 		communicator.setTrustAllCertificates(true);
 		communicator.setConfigManagement("true");
 		communicator.init();
@@ -38,20 +39,6 @@ class GudePDU8045CommunicatorTest {
 	@AfterEach()
 	public void destroy() throws Exception {
 		communicator.disconnect();
-	}
-
-	/**
-	 * Test CameraPanasonicAWUE150Communicator.getMultipleStatistics successful with valid username password
-	 * Expected retrieve valid device monitoring data
-	 */
-	@Test
-	void testGudePDUCommunicatorGetMonitoringDataSuccessful() throws Exception {
-		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
-		communicator.getMultipleStatistics();
-		communicator.getMultipleStatistics();
-		communicator.getMultipleStatistics();
-		communicator.getMultipleStatistics();
-		communicator.getMultipleStatistics();
 	}
 
 	/**
@@ -149,5 +136,37 @@ class GudePDU8045CommunicatorTest {
 		communicator.getMultipleStatistics();
 
 		Assertions.assertEquals("false", stats.get("PowerPort01#Edited"));
+	}
+
+	/**
+	 * Test GudePDU8045Communicator.controlProperty advance monitoring control
+	 *
+	 * Expected: control successfully
+	 */
+	@Test
+	void testPowerPortControlAllSwitch() throws Exception {
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = statistics.getStatistics();
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String propertyName = "PowerPortAllOff";
+		String propertyValue = "1";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(propertyValue);
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort01#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort02#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort03#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort04#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort05#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort06#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort07#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort08#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort09#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort10#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort11#PowerPortStatus"));
+		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort12#PowerPortStatus"));
 	}
 }
