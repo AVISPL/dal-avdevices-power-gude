@@ -19,6 +19,8 @@ public class DeviceConstant {
 	}
 
 	public static final char HASH = '#';
+	public static final String COMMA = ",";
+	public static final String COLON = ":";
 	public static final String SPACE = " ";
 	public static final String EMPTY = "";
 	public static final String HTTPS = "http://";
@@ -41,14 +43,13 @@ public class DeviceConstant {
 	public static final String HOUR_MINUTE_SECOND_UNIT = "h:m:s";
 	public static final String DEG_C_UNIT = "degC";
 	public static final String CELSIUS_UNIT = "C";
-	public static final String AMPE_UNIT = "A";
 	public static final String MILLI_AMPE_UNIT = "mA";
 	public static final String MIN = "Min";
 	public static final String MINIMUM = "Minimum";
 	public static final String MAXIMUM = "Maximum";
 	public static final String MAX = "Max";
 	public static final String ALL_PORT_NUMBER = "all";
-	public static final float DEFAULT_FOR_NULL_VALUE = 0f;
+	public static final double DEFAULT_FOR_NULL_VALUE = 0f;
 	public static final int MIN_WAITING_TIME = 1;
 	public static final int MAX_WAITING_TIME = 59;
 	public static final int INIT_SWITCH_INDEX = 2;

@@ -16,7 +16,7 @@ import java.util.Optional;
 public enum DeviceInfoMetric {
 
 	// Static metric
-	ADVANCE_MONITORING("AdvanceMonitoring"),
+	ADVANCE_MONITORING("AdvancedMonitoring"),
 	DEVICE_NAME("DeviceName"),
 	FIRMWARE_VERSION("FirmwareVersion"),
 	ALL_POWER_PORT_CONTROL_OFF("PowerPortAllOff"),

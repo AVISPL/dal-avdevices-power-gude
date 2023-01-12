@@ -78,6 +78,5 @@ public enum SupportedSensorField {
 		}
 		return supportedSensorFields;
 	}
-
 }
 

@@ -7,7 +7,8 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
+import org.springframework.core.convert.ConversionException;
+
 
 /**
  * EnumTypeHandler
@@ -37,7 +38,8 @@ public class EnumTypeHandler {
 				String name = (String) method.invoke(c); // getName executed
 				names.add(name);
 			} catch (Exception e) {
-				throw new ResourceNotReachableException("Error to convert enum " + enumType.getSimpleName() + " to names");
+				throw new ConversionException("Error to convert enum " + enumType.getSimpleName() + " to names") {
+				};
 			}
 		}
 		return names;
@@ -60,7 +62,8 @@ public class EnumTypeHandler {
 				String name = (String) method.invoke(c); // getName executed
 				names.add(name);
 			} catch (Exception e) {
-				throw new ResourceNotReachableException("Error to convert enum " + enumType.getSimpleName() + " to names");
+				throw new ConversionException("Error to convert enum " + enumType.getSimpleName() + " to names") {
+				};
 			}
 		}
 		return names;

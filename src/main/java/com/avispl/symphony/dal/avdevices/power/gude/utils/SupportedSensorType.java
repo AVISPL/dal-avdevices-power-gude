@@ -16,23 +16,26 @@ import java.util.Set;
  */
 public enum SupportedSensorType {
 
-	METER("Meter", 9),
-	SENSOR_7106("Sensor7106", 53),
-	POWER_PORT("PowerPort", 8),
-	ERROR("PowerPort", -1);
+	METER("Meter", 9, true),
+	SENSOR_7106("Sensor7106", 53, true),
+	POWER_PORT("PowerPort", 8, false),
+	ERROR("PowerPort", -1, false);
 
 	private final String uiName;
 	private final int code;
+	private final boolean isHistorical;
 
 	/**
 	 * Parameterized constructor
 	 *
 	 * @param uiName ui name of fan status
 	 * @param code api name of fan status
+	 * @param isHistorical is historical sensor type
 	 */
-	SupportedSensorType(String uiName, int code) {
+	SupportedSensorType(String uiName, int code, boolean isHistorical) {
 		this.uiName = uiName;
 		this.code = code;
+		this.isHistorical = isHistorical;
 	}
 
 	/**
@@ -51,6 +54,15 @@ public enum SupportedSensorType {
 	 */
 	public int getCode() {
 		return code;
+	}
+
+	/**
+	 * Retrieves {@link #isHistorical}
+	 *
+	 * @return value of {@link #isHistorical}
+	 */
+	public boolean isHistorical() {
+		return isHistorical;
 	}
 
 	/**

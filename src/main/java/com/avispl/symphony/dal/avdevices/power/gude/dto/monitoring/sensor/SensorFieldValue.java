@@ -18,10 +18,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class SensorFieldValue {
 
 	@JsonAlias("v")
-	private float propertyValue;
+	private double propertyValue;
 
 	@JsonAlias("st")
-	private List<Float> advanceData;
+	private List<Double> advanceData;
 
 	private SensorField sensorField;
 
@@ -32,7 +32,7 @@ public class SensorFieldValue {
 	 *
 	 * @return value of {@link #propertyValue}
 	 */
-	public float getPropertyValue() {
+	public double getPropertyValue() {
 		return propertyValue;
 	}
 
@@ -41,7 +41,7 @@ public class SensorFieldValue {
 	 *
 	 * @param propertyValue new value of {@link #propertyValue}
 	 */
-	public void setPropertyValue(float propertyValue) {
+	public void setPropertyValue(double propertyValue) {
 		this.propertyValue = propertyValue;
 	}
 
@@ -50,7 +50,7 @@ public class SensorFieldValue {
 	 *
 	 * @return value of {@link #advanceData}
 	 */
-	public List<Float> getAdvanceData() {
+	public List<Double> getAdvanceData() {
 		return advanceData;
 	}
 
@@ -59,7 +59,7 @@ public class SensorFieldValue {
 	 *
 	 * @param advanceData new value of {@link #advanceData}
 	 */
-	public void setAdvanceData(List<Float> advanceData) {
+	public void setAdvanceData(List<Double> advanceData) {
 		this.advanceData = advanceData;
 	}
 
