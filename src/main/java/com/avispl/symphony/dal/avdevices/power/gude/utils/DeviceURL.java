@@ -21,4 +21,6 @@ public class DeviceURL {
 	public static final String FIRST_LOGIN = "/statusjsn.js?components=2";
 	public static final String DEVICE_MONITORING = "/statusjsn.js?components=8470545";
 	public static final String DEVICE_CONFIG = "/statusjsn.js?components=1";
+	public static final String OUTPUT_DATA = "/statusjsn.js?components=769";
+
 }

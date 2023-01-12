@@ -59,6 +59,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputMode
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WaitingTimeUnit;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.DevicesMetricGroup;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.HistoricalProperties;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.SwitchOnOffStatus;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -79,6 +80,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 	private Map<String, Boolean> isAdvanceMonitoringGroups = new HashMap<>();
 	private List<Boolean> isOutputsControlEdited = new ArrayList<>();
+
+	private List<String> cachedBatch = new ArrayList<>();
+
+	private Map<String, String> cachedFieldsName = new HashMap<>();
+
+	/**
+	 * Stored historical properties from adapter properties
+	 */
+	private String historicalProperties;
 
 	/**
 	 * Stored list control value of waitingTime controllable property
@@ -138,6 +148,24 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		this.configManagement = configManagement;
 	}
 
+	/**
+	 * Retrieves {@link #historicalProperties}
+	 *
+	 * @return value of {@link #historicalProperties}
+	 */
+	public String getHistoricalProperties() {
+		return historicalProperties;
+	}
+
+	/**
+	 * Sets {@link #historicalProperties} value
+	 *
+	 * @param historicalProperties new value of {@link #historicalProperties}
+	 */
+	public void setHistoricalProperties(String historicalProperties) {
+		this.historicalProperties = historicalProperties;
+	}
+
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		if (logger.isDebugEnabled()) {
@@ -156,7 +184,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				if (StringUtils.isNullOrEmpty(authorizationHeader)) {
 					login();
 				}
-				retrieveDeviceMonitoringData(stats, dynamicStats, advancedControllableProperties);
+				retrieveDeviceMonitoringData(stats, advancedControllableProperties);
+				populateDynamicStats(stats, dynamicStats);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setDynamicStatistics(dynamicStats);
 				extendedStatistics.setControllableProperties(advancedControllableProperties);
@@ -177,7 +206,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				return;
 			}
 			Map<String, String> stats = this.localExtendedStatistics.getStatistics();
-			Map<String, String> dynamicStats = this.localExtendedStatistics.getDynamicStatistics();
 			List<AdvancedControllableProperty> advancedControllableProperties = this.localExtendedStatistics.getControllableProperties();
 
 			String property = controllableProperty.getProperty();
@@ -193,7 +221,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 				switch (group) {
 					case SENSOR:
-						sensorAdvanceMonitoringControl(stats, dynamicStats, advancedControllableProperties, controlGroup + DeviceConstant.HASH, value);
+						sensorAdvanceMonitoringControl(stats, advancedControllableProperties, controlGroup + DeviceConstant.HASH, value);
 						break;
 					case OUTPUT:
 						int outputIndex = Integer.parseInt(controlGroup.substring(DevicesMetricGroup.OUTPUT.getName().length())) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
@@ -210,8 +238,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					case ALL_POWER_PORT_CONTROL_OFF:
 						output.setOutputMode(OutputMode.OFF);
 						performPowerPortControl(output);
+
+						// device need 10s to switch all power port off
 						try {
-							Thread.sleep(8000);
+							Thread.sleep(10000);
 						} catch (InterruptedException e) {
 							logger.error(String.format("error while control %s: %s", controllableProperty, e.getMessage()));
 						}
@@ -219,8 +249,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					case ALL_POWER_PORT_CONTROL_ON:
 						output.setOutputMode(OutputMode.ON);
 						performPowerPortControl(output);
+
+						// device need 10s to switch all power port on
 						try {
-							Thread.sleep(8000);
+							Thread.sleep(10000);
 						} catch (InterruptedException e) {
 							logger.error(String.format("error while control %s: %s", controllableProperty, e.getMessage()));
 						}
@@ -308,10 +340,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				login();
 				return doGetWithRetryOnUnauthorized(url, clazz, false);
 			} else {
-				logger.error("retry failed");
+				throw new FailedLoginException("login failed, please check the username, password and server host");
 			}
 		}
-		return null;
 	}
 
 	/**
@@ -348,7 +379,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		} catch (HttpHostConnectException e) {
 			throw new ResourceNotReachableException(String.format("Error while connecting to %s: %s", host, e.getMessage()), e);
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Login failed" + e.getMessage(), e);
+			throw new ResourceNotReachableException(e.getMessage(), e);
 		}
 	}
 
@@ -371,16 +402,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * When the response is null or empty, the failedMonitor is going to update and exception is not populated
 	 *
 	 * @param stats store all statistics
-	 * @param dynamicStats store all dynamic statistics
 	 * @param advancedControllableProperties store all controllable properties
 	 * @throws FailedLoginException when login fails
 	 */
-	private void retrieveDeviceMonitoringData(Map<String, String> stats, Map<String, String> dynamicStats, List<AdvancedControllableProperty> advancedControllableProperties) {
+	private void retrieveDeviceMonitoringData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_MONITORING);
 		try {
 			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
 			if (cachedMonitoringStatus != null) {
-				populateDeviceMonitoring(stats, dynamicStats, advancedControllableProperties);
+				populateDeviceMonitoring(stats, advancedControllableProperties);
 			} else {
 				throw new ResourceNotReachableException("Error while retrieving Device and Sensor data: response data is empty");
 			}
@@ -393,10 +423,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * populate Device monitoring data
 	 *
 	 * @param stats store all statistics
-	 * @param dynamicStats store all dynamic statistic
 	 * @param advancedControllableProperties store all controllable properties
 	 */
-	private void populateDeviceMonitoring(Map<String, String> stats, Map<String, String> dynamicStats, List<AdvancedControllableProperty> advancedControllableProperties) {
+	private void populateDeviceMonitoring(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		List<SensorDescription> sensorDescriptions = cachedMonitoringStatus.getSensorDescriptions();
 		Map<Integer, SensorValue> sensorValues = cachedMonitoringStatus.getSensorValues().stream().collect(Collectors.toMap(SensorValue::getType, Function.identity()));
 		if (sensorDescriptions != null && sensorValues != null) {
@@ -405,7 +434,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					// the device return the dynamic Json object => the adapter have to loop through sensor list to map the supported sensor values to DTOs
 					SensorValue sensorValue = sensorValues.get(sensorDescription.getType());
 					sensorValue.mapDynamicJsonObjectDataToSensorValuesDTO();
-					populateSensorData(stats, dynamicStats, advancedControllableProperties, sensorValue.getSensorSupportedValues(), sensorDescription);
+					populateSensorData(stats, advancedControllableProperties, sensorValue.getSensorSupportedValues(), sensorDescription);
 				}
 			}
 			populateDeviceInfo(stats, advancedControllableProperties);
@@ -420,12 +449,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * populate sensor data (include advance data) when advance monitoring is triggered
 	 *
 	 * @param stats store all statistics
-	 * @param dynamicStats store all dynamic statistic
 	 * @param advancedControllableProperties store all controllable properties
 	 * @param sensorPropertiesValue list of sensor properties value
 	 */
-	public void populateSensorData(Map<String, String> stats, Map<String, String> dynamicStats, List<AdvancedControllableProperty> advancedControllableProperties,
-			List<List<SensorFieldValue>> sensorPropertiesValue,
+	public void populateSensorData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, List<List<SensorFieldValue>> sensorPropertiesValue,
 			SensorDescription sensorDescription) {
 		List<SensorProperty> properties = sensorDescription.getProperties();
 		List<SensorField> fields = sensorDescription.getFields();
@@ -441,15 +468,18 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				String value;
 
 				SupportedSensorType sensorType = SupportedSensorType.getSupportedSensorTypeByCode(type);
-				boolean isHistorical = false;
 				switch (sensorType) {
 					case POWER_PORT:
 						groupName = DevicesMetricGroup.OUTPUT.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, Integer.parseInt(sensorProperty.getId())) + DeviceConstant.HASH;
 						cachedMonitoringStatus.getOutputs().get(indexOfSensorProperty).setGroupName(groupName);
 						break;
 					case SENSOR_7106:
-						groupName = DevicesMetricGroup.SENSOR.getName() + properties.get(indexOfSensorProperty).getName() + DeviceConstant.HASH;
-						isHistorical = true;
+						groupName =
+								DevicesMetricGroup.SENSOR.getName() + properties.get(indexOfSensorProperty).getId().replaceAll(DeviceConstant.SPACE_REGEX, DeviceConstant.EMPTY)
+										+ DeviceConstant.HASH;
+						break;
+					case METER:
+						groupName = DevicesMetricGroup.METER.getName() + properties.get(indexOfSensorProperty).getId() + DeviceConstant.HASH;
 						break;
 					default:
 						groupName = properties.get(indexOfSensorProperty).getName() + DeviceConstant.HASH;
@@ -487,17 +517,18 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					// handle special case:
 					// 1. convert duration time in second to hh:mm:ss format
 					if (fieldName.equals(SupportedSensorField.RELATIVE_TIME.getUiName())) {
-						unit = DeviceConstant.HOUR_MINUTE_SECOND_UNIT;
+						unit = DeviceConstant.EMPTY;
 						value = convertSecondToDuration(Long.parseLong(value));
 					}
-					// 2. normalize unit
+					// 2. convert residual current unit from A to mA
+					if (fieldName.equals(SupportedSensorField.RESIDUAL_CURRENT.getUiName())) {
+						unit = DeviceConstant.MILLI_AMPE_UNIT;
+						value = String.valueOf(sensorFieldValue.getPropertyValue() * DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR);
+					}
+					// 3. normalize unit
 					switch (unit) {
 						case DeviceConstant.DEG_C_UNIT:
 							unit = DeviceConstant.CELSIUS_UNIT;
-							break;
-						case DeviceConstant.AMPE_UNIT:
-							unit = DeviceConstant.MILLI_AMPE_UNIT;
-							value = String.valueOf(sensorFieldValue.getPropertyValue() * DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR);
 							break;
 						default:
 							logger.debug(String.format("un-required normalized unit: %s", unit));
@@ -505,20 +536,18 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					}
 
 					String propertyName = String.format("%s%s", groupName, fieldName);
-					stats.put(propertyName, value);
 					if (StringUtils.isNotNullOrEmpty(unit) && !unit.equals(DeviceConstant.NONE)) {
 						propertyName = String.format("%s%s(%s)", groupName, fieldName, unit);
-						stats.put(propertyName, value);
 					}
+					stats.put(propertyName, value);
 
-					// store historical data
-					if (isHistorical) {
-						dynamicStats.put(propertyName, value);
+					if (sensorDescription.getType() == SupportedSensorType.SENSOR_7106.getCode() || sensorDescription.getType() == SupportedSensorType.METER.getCode()) {
+						cachedFieldsName.put(String.format("%s(%s)", fieldName, unit), propertyName);
 					}
 
 					// populate advance monitoring data
 					if (!isContainAdvanceMonitoringData && isAdvanceMonitoringGroups.get(groupName)) {
-						List<Float> statsValues = sensorFieldValue.getAdvanceData();
+						List<Double> statsValues = sensorFieldValue.getAdvanceData();
 						for (int indexOfSensorPropertyStats = 0; indexOfSensorPropertyStats < sensorPropertyStats.size(); indexOfSensorPropertyStats++) {
 							String advancePropertyName = toPascalCase(sensorPropertyStats.get(indexOfSensorPropertyStats));
 							if (advancePropertyName.contains(DeviceConstant.MAX)) {
@@ -547,10 +576,32 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		if (misc != null) {
 			stats.put(DeviceInfoMetric.DEVICE_NAME.getName(), misc.getProductName());
 			stats.put(DeviceInfoMetric.FIRMWARE_VERSION.getName(), misc.getFirmware());
-			addAdvanceControlProperties(advancedControllableProperties, stats,
-					createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_OFF.getName(), DeviceConstant.ALL_OFF, DeviceConstant.SWITCHING_OFF));
-			addAdvanceControlProperties(advancedControllableProperties, stats,
-					createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_ON.getName(), DeviceConstant.ALL_ON, DeviceConstant.SWITCHING_ON));
+
+			if (isConfigManagement) {
+				boolean isAllPortOn = true;
+				boolean isAllPortOff = true;
+				for (Output output : cachedMonitoringStatus.getOutputs()) {
+					if (output.getState().toString().equals(OutputStatus.ON.getApiName())) {
+						isAllPortOff = false;
+						continue;
+					}
+					if (output.getState().toString().equals(OutputStatus.OFF.getApiName())) {
+						isAllPortOn = false;
+					}
+				}
+				if (!isAllPortOff && !isAllPortOn) {
+					addAdvanceControlProperties(advancedControllableProperties, stats,
+							createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_OFF.getName(), DeviceConstant.ALL_OFF, DeviceConstant.SWITCHING_OFF));
+					addAdvanceControlProperties(advancedControllableProperties, stats,
+							createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_ON.getName(), DeviceConstant.ALL_ON, DeviceConstant.SWITCHING_ON));
+				} else if (isAllPortOn) {
+					addAdvanceControlProperties(advancedControllableProperties, stats,
+							createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_OFF.getName(), DeviceConstant.ALL_OFF, DeviceConstant.SWITCHING_OFF));
+				} else {
+					addAdvanceControlProperties(advancedControllableProperties, stats,
+							createButton(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_ON.getName(), DeviceConstant.ALL_ON, DeviceConstant.SWITCHING_ON));
+				}
+			}
 		}
 	}
 
@@ -558,12 +609,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * handle sensor advance monitoring control
 	 *
 	 * @param stats store all statistics
-	 * @param dynamicStats store all dynamic statistic
 	 * @param advancedControllableProperties store all controllable properties
 	 * @param groupName control groups name
 	 * @param value value of controllable property
 	 */
-	private void sensorAdvanceMonitoringControl(Map<String, String> stats, Map<String, String> dynamicStats, List<AdvancedControllableProperty> advancedControllableProperties, String groupName,
+	private void sensorAdvanceMonitoringControl(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, String groupName,
 			String value) {
 		isAdvanceMonitoringGroups.put(groupName, value.equals(SwitchOnOffStatus.ON.getApiName()));
 		List<SensorDescription> sensorDescriptions = cachedMonitoringStatus.getSensorDescriptions();
@@ -573,7 +623,33 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				// the device return the dynamic Json object => the adapter have to loop through sensor list to map the supported sensor values to DTOs
 				SensorValue sensorValue = sensorValues.get(sensorDescription.getType());
 				if (sensorValue != null) {
-					populateSensorData(stats, dynamicStats, advancedControllableProperties, sensorValue.getSensorSupportedValues(), sensorDescription);
+					populateSensorData(stats, advancedControllableProperties, sensorValue.getSensorSupportedValues(), sensorDescription);
+				}
+			}
+		}
+	}
+
+	/**
+	 * This method is used to map stats to dynamic stats
+	 *
+	 * @param stats store all statistics
+	 * @param dynamicStats store all dynamic statistics
+	 */
+	private void populateDynamicStats(Map<String, String> stats, Map<String, String> dynamicStats) {
+		for (SupportedSensorType supportedSensorType : SupportedSensorType.values()) {
+			if (supportedSensorType.isHistorical()) {
+				String fieldName;
+				Set<String> fields = new HashSet<>();
+				if (StringUtils.isNotNullOrEmpty(getHistoricalProperties())) {
+					fields = convertUserInput(getHistoricalProperties());
+				}
+
+				for (HistoricalProperties historicalProperty : HistoricalProperties.values()) {
+					fieldName = historicalProperty.getUiName();
+					if (!fields.isEmpty() && cachedFieldsName.containsKey(fieldName) && fields.contains(fieldName)) {
+						String propertyName = cachedFieldsName.get(fieldName);
+						dynamicStats.put(propertyName, stats.get(propertyName));
+					}
 				}
 			}
 		}
@@ -630,14 +706,17 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		OutputMode outputMode = output.getOutputMode();
 		WaitingTimeUnit waitingTimeUnit = output.getWaitingTimeUnit();
 		String waitingTime = output.getWaitingTime();
+		if (cachedBatch.size() <= 12) {
+			cachedBatch.add(batchEndSwitchValue.getApiName());
+		}
 		if (batch.get(1) != 0) {
 			String remainingTime = convertSecondToDuration(batch.get(1));
-			stats.put(batchCountDown, String.format("Switch to %s in %s", batchInitSwitchValue.getUiName(), remainingTime));
+			stats.put(batchCountDown, String.format("Switch to %s in %s", OutputStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
 		}
 
 		stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName()));
 		if (isConfigManagement) {
-			stats.put(groupName.concat(OutputControllingMetric.EDITED), String.valueOf(isOutputsControlEdited.get(outputIndex)));
+			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
 			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
 		}
 
@@ -701,6 +780,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				outputStatus = OutputStatus.getByUIName(value);
 				batch = cachedOutput.getBatch();
 				batch.set(DeviceConstant.END_SWITCH_INDEX, Integer.parseInt(outputStatus.getApiName()));
+				cachedBatch.set(outputIndex, outputStatus.getApiName());
 				break;
 			case OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME:
 				cachedOutput.setWaitingTime(value);
@@ -723,6 +803,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		}
 		cachedOutputsControl.set(outputIndex, cachedOutput);
 		populateOutputsControl(stats, advancedControllableProperties, outputIndex);
+		populateDeviceInfo(stats, advancedControllableProperties);
 	}
 
 	/**
@@ -735,8 +816,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private Output performPowerPortControl(Output cachedOutput) {
 		try {
 			String request = buildDeviceFullPath(cachedOutput.contributeOutputControlRequest());
-			DeviceMonitoringData monitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
-			if (cachedOutput.getPortNumber() != "all") {
+			doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
+			DeviceMonitoringData monitoringStatus = doGetWithRetryOnUnauthorized(buildDeviceFullPath(DeviceURL.OUTPUT_DATA), DeviceMonitoringData.class, true);
+
+			if (!cachedOutput.getPortNumber().equals(DeviceConstant.ALL_PORT_NUMBER)) {
 				Output output = Optional.ofNullable(monitoringStatus).map(DeviceMonitoringData::getOutputs)
 						.map(outputs1 -> outputs1.get(Integer.parseInt(cachedOutput.getPortNumber()) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR)).orElse(cachedOutput);
 				output.setGroupName(cachedOutput.getGroupName());
@@ -897,5 +980,29 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private void isValidConfigManagement() {
 		isConfigManagement = StringUtils.isNotNullOrEmpty(this.configManagement) && this.configManagement.equalsIgnoreCase(String.valueOf(true));
+	}
+
+	/**
+	 * This method is used to handle input from adapter properties and convert it to Set of String for control
+	 *
+	 * @return Set<String> is the Set of String of filter element
+	 */
+	private Set<String> convertUserInput(String input) {
+		try {
+			if (!StringUtils.isNullOrEmpty(input)) {
+				String[] listAdapterPropertyElement = input.split(DeviceConstant.COMMA);
+
+				// Remove start and end spaces of each adapterProperty
+				Set<String> setAdapterPropertiesElement = new HashSet<>();
+				for (String adapterPropertyElement : listAdapterPropertyElement) {
+					setAdapterPropertiesElement.add(adapterPropertyElement.trim());
+				}
+				return setAdapterPropertiesElement;
+			}
+			return Collections.emptySet();
+		} catch (Exception e) {
+			logger.error("In valid adapter properties input");
+		}
+		return Collections.emptySet();
 	}
 }
