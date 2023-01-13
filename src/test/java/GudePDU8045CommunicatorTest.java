@@ -26,7 +26,7 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("***REMOVED***");
+		communicator.setHost("172.16.251.101");
 		communicator.setPort(80);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
@@ -122,7 +122,7 @@ class GudePDU8045CommunicatorTest {
 		Map<String, String> stats = statistics.getStatistics();
 		ControllableProperty controllableProperty = new ControllableProperty();
 
-		String propertyName = "PowerPort01" + DeviceConstant.HASH + "PowerPort";
+		String propertyName = "PowerPort01Control" + DeviceConstant.HASH + "00PowerPort";
 		String propertyValue = "Batch";
 		controllableProperty.setProperty(propertyName);
 		controllableProperty.setValue(propertyValue);

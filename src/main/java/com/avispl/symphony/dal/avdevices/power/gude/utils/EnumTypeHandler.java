@@ -7,9 +7,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.core.convert.ConversionException;
-
-
 /**
  * EnumTypeHandler
  *
@@ -38,8 +35,7 @@ public class EnumTypeHandler {
 				String name = (String) method.invoke(c); // getName executed
 				names.add(name);
 			} catch (Exception e) {
-				throw new ConversionException("Error to convert enum " + enumType.getSimpleName() + " to names") {
-				};
+				throw new EnumConstantNotPresentException(enumType, enumType.getSimpleName());
 			}
 		}
 		return names;
@@ -51,7 +47,7 @@ public class EnumTypeHandler {
 	 * @param enumType the enumType is enum class
 	 * @param removedValue the value will be removed from return lisr
 	 */
-	public static <T extends Enum<T>> List<String> getListOfEnumNames(Class<T> enumType, Enum<T> removedValue) {
+	public static <T extends Enum<T>> List<String> getListOfEnumNames(Class<T> enumType, Enum<T> removedValue) throws EnumConstantNotPresentException {
 		List<String> names = new ArrayList<>();
 		for (T c : enumType.getEnumConstants()) {
 			if (c.equals(removedValue)) {
@@ -62,8 +58,7 @@ public class EnumTypeHandler {
 				String name = (String) method.invoke(c); // getName executed
 				names.add(name);
 			} catch (Exception e) {
-				throw new ConversionException("Error to convert enum " + enumType.getSimpleName() + " to names") {
-				};
+				throw new EnumConstantNotPresentException(enumType, enumType.getSimpleName());
 			}
 		}
 		return names;

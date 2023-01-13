@@ -20,7 +20,8 @@ public enum DeviceInfoMetric {
 	DEVICE_NAME("DeviceName"),
 	FIRMWARE_VERSION("FirmwareVersion"),
 	ALL_POWER_PORT_CONTROL_OFF("PowerPortAllOff"),
-	ALL_POWER_PORT_CONTROL_ON("PowerPortAllOn");
+	ALL_POWER_PORT_CONTROL_ON("PowerPortAllOn"),
+	STATUS("Status");
 
 	private final String name;
 

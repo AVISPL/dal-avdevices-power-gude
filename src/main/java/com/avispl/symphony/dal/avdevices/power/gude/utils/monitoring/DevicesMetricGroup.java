@@ -17,7 +17,7 @@ public enum DevicesMetricGroup {
 	METER("Meter"),
 	SENSOR("Sensor"),
 	OUTPUT("PowerPort"),
-	DEVICE_INFO("DeviceInfo");
+	CONTROL("Control");
 
 	private final String name;
 

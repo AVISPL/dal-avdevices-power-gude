@@ -18,7 +18,7 @@ public class DeviceConstant {
 	private DeviceConstant() {
 	}
 
-	public static final char HASH = '#';
+	public static final String HASH = "#";
 	public static final String COMMA = ",";
 	public static final String COLON = ":";
 	public static final String SPACE = " ";
