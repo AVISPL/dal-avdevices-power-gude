@@ -224,7 +224,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						sensorAdvanceMonitoringControl(stats, advancedControllableProperties, controlGroup + DeviceConstant.HASH, value);
 						break;
 					case OUTPUT:
-						int outputIndex = Integer.parseInt(controlGroup.substring(DevicesMetricGroup.OUTPUT.getName().length())) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
+						int outputIndex = Integer.parseInt(controlGroup.substring(DevicesMetricGroup.OUTPUT.getName().length(), 11)) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
 						powerPortControl(stats, advancedControllableProperties, splitProperty[1], value, outputIndex);
 						break;
 					default:
@@ -580,6 +580,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			if (isConfigManagement) {
 				boolean isAllPortOn = true;
 				boolean isAllPortOff = true;
+				Set<String> unusedKeys = new HashSet<>();
+				unusedKeys.add(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_OFF.getName());
+				unusedKeys.add(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_ON.getName());
+				removeUnusedStatsAndControls(stats, advancedControllableProperties, unusedKeys);
+
 				for (Output output : cachedMonitoringStatus.getOutputs()) {
 					if (output.getState().toString().equals(OutputStatus.ON.getApiName())) {
 						isAllPortOff = false;
@@ -686,8 +691,13 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		Output output = cachedOutputsControl.get(outputIndex);
 		output.setPortNumber(String.valueOf(outputIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
 
-		String groupName = output.getGroupName();
-		String powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT);
+		String powerPortStatusOnDashBoardLabel = output.getGroupName().replaceAll(DeviceConstant.HASH, DeviceConstant.EMPTY).concat(DeviceInfoMetric.STATUS.getName());
+		String groupName = DevicesMetricGroup.OUTPUT.getName()
+				.concat(String.format(DeviceConstant.TWO_NUMBER_FORMAT, outputIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR))
+				.concat(DevicesMetricGroup.CONTROL.getName())
+				.concat(DeviceConstant.HASH);
+
+		String powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED);
 		String powerPortStatusLabel = groupName.concat(OutputControllingMetric.POWER_PORT_STATUS);
 		String batchInitSwitchLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_INIT_SWITCH);
 		String batchEndSwitchLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_END_SWITCH);
@@ -699,6 +709,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		List<String> outputModes = EnumTypeHandler.getListOfEnumNames(OutputMode.class, OutputMode.ERROR);
 		List<String> batchSwitchModes = EnumTypeHandler.getListOfEnumNames(OutputStatus.class, OutputStatus.ERROR);
 		List<String> batchWaitingTimeUnitModes = EnumTypeHandler.getListOfEnumNames(WaitingTimeUnit.class, WaitingTimeUnit.ERROR);
+		Set<String> unusedKeys = new HashSet<>();
 
 		List<Integer> batch = output.getBatch();
 		OutputStatus batchInitSwitchValue = OutputStatus.getByAPIName(String.valueOf(batch.get(DeviceConstant.INIT_SWITCH_INDEX) % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
@@ -712,43 +723,54 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		if (batch.get(1) != 0) {
 			String remainingTime = convertSecondToDuration(batch.get(1));
 			stats.put(batchCountDown, String.format("Switch to %s in %s", OutputStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
+			powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT);
+			unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
 		}
 
-		stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName()));
+		stats.put(powerPortStatusOnDashBoardLabel, getDefaultValueForNullData(outputStatus.getUiName()));
+
 		if (isConfigManagement) {
-			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
-			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
-		}
-
-		Set<String> unusedKeys = new HashSet<>();
-		if (isOutputsControlEdited.get(outputIndex)) {
-			switch (outputMode) {
-				case ON:
-				case OFF:
-				case RESET:
-					unusedKeys.add(batchInitSwitchLabel);
-					unusedKeys.add(batchEndSwitchLabel);
-					unusedKeys.add(batchWaitingTimeLabel);
-					unusedKeys.add(batchWaitingTimeUnitLabel);
-					break;
-				case BATCH:
-					addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchInitSwitchLabel, batchSwitchModes, batchInitSwitchValue.getUiName()));
-					addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchEndSwitchLabel, batchSwitchModes, batchEndSwitchValue.getUiName()));
-					addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchWaitingTimeLabel, waitingTimeValues, waitingTime));
-					addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchWaitingTimeUnitLabel, batchWaitingTimeUnitModes, waitingTimeUnit.getUiName()));
-					break;
-				default:
-					throw new IllegalStateException(String.format("Power port mode %s is not supported", outputMode));
+			if (isOutputsControlEdited.get(outputIndex)) {
+				switch (outputMode) {
+					case ON:
+					case OFF:
+					case RESET:
+						unusedKeys.add(batchInitSwitchLabel);
+						unusedKeys.add(batchEndSwitchLabel);
+						unusedKeys.add(batchWaitingTimeLabel);
+						unusedKeys.add(batchWaitingTimeUnitLabel);
+						break;
+					case BATCH:
+						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchInitSwitchLabel, batchSwitchModes, batchInitSwitchValue.getUiName()));
+						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchEndSwitchLabel, batchSwitchModes, batchEndSwitchValue.getUiName()));
+						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchWaitingTimeLabel, waitingTimeValues, waitingTime));
+						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchWaitingTimeUnitLabel, batchWaitingTimeUnitModes, waitingTimeUnit.getUiName()));
+						powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT);
+						unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
+						break;
+					default:
+						throw new IllegalStateException(String.format("Power port mode %s is not supported", outputMode));
+				}
+				addAdvanceControlProperties(advancedControllableProperties, stats, createButton(applyChangesLabel, DeviceConstant.APPLY, DeviceConstant.APPLYING));
+				addAdvanceControlProperties(advancedControllableProperties, stats, createButton(cancelChangesLabel, DeviceConstant.CANCEL, DeviceConstant.CANCELING));
+			} else {
+				unusedKeys.add(batchInitSwitchLabel);
+				unusedKeys.add(batchEndSwitchLabel);
+				unusedKeys.add(batchWaitingTimeLabel);
+				unusedKeys.add(batchWaitingTimeUnitLabel);
+				unusedKeys.add(applyChangesLabel);
+				unusedKeys.add(cancelChangesLabel);
 			}
-			addAdvanceControlProperties(advancedControllableProperties, stats, createButton(applyChangesLabel, DeviceConstant.APPLY, DeviceConstant.APPLYING));
-			addAdvanceControlProperties(advancedControllableProperties, stats, createButton(cancelChangesLabel, DeviceConstant.CANCEL, DeviceConstant.CANCELING));
-		} else {
-			unusedKeys.add(batchInitSwitchLabel);
-			unusedKeys.add(batchEndSwitchLabel);
-			unusedKeys.add(batchWaitingTimeLabel);
-			unusedKeys.add(batchWaitingTimeUnitLabel);
-			unusedKeys.add(applyChangesLabel);
-			unusedKeys.add(cancelChangesLabel);
+
+			if (isOutputsControlEdited.get(outputIndex) && outputMode.equals(OutputMode.BATCH) || batch.get(1) != 0) {
+				powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT);
+				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
+			} else {
+				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT));
+			}
+			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
+			stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName()));
+			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
 		}
 		removeUnusedStatsAndControls(stats, advancedControllableProperties, unusedKeys);
 	}
@@ -767,6 +789,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		isOutputsControlEdited.set(outputIndex, true);
 		isEmergencyDelivery = true;
 		switch (controllableProperty) {
+			case OutputControllingMetric.POWER_PORT_UN_INDEXED:
 			case OutputControllingMetric.POWER_PORT:
 				OutputMode outputMode = OutputMode.getByUIName(value);
 				cachedOutput.setOutputMode(outputMode);
@@ -793,6 +816,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				cachedOutput = performPowerPortControl(cachedOutput);
 				cachedMonitoringStatus.getOutputs().set(outputIndex, new Output(cachedOutput));
 				isOutputsControlEdited.set(outputIndex, false);
+				isEmergencyDelivery = false;
 				break;
 			case OutputControllingMetric.CANCEL_CHANGES:
 				cachedOutput = new Output(cachedMonitoringStatus.getOutputs().get(outputIndex));
