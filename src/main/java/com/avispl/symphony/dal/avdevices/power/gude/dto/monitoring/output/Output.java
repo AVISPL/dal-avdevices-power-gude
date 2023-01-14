@@ -9,8 +9,8 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputMode;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WaitingTimeUnit;
 
 /**
@@ -253,10 +253,10 @@ public class Output {
 		String port = this.getPortNumber();
 		switch (cachedOutputMode){
 			case ON:
-				String portSwitch = OutputStatus.ON.getApiName();
+				String portSwitch = OnOffStatus.ON.getApiName();
 				return String.format("/statusjsn.js?components=769&cmd=%s&p=%s&s=%s", cmd, port, portSwitch);
 			case OFF:
-				portSwitch = OutputStatus.OFF.getApiName();
+				portSwitch = OnOffStatus.OFF.getApiName();
 				return String.format("/statusjsn.js?components=769&cmd=%s&p=%s&s=%s", cmd, port, portSwitch);
 			case RESET:
 				return String.format("/statusjsn.js?components=769&cmd=%s&p=%s", cmd, port);

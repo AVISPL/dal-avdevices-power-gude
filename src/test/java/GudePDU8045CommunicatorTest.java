@@ -1,6 +1,5 @@
 import java.util.Map;
 
-import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,9 +9,8 @@ import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceInfoMetric;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputStatus;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.DevicesMetricGroup;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 
 /**
  * GudePDU8045Comunicator
@@ -157,18 +155,18 @@ class GudePDU8045CommunicatorTest {
 		communicator.controlProperty(controllableProperty);
 		communicator.getMultipleStatistics();
 
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort01#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort02#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort03#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort04#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort05#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort06#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort07#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort08#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort09#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort10#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort11#PowerPortStatus"));
-		Assertions.assertEquals(OutputStatus.OFF, stats.get("PowerPort12#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort01#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort02#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort03#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort04#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort05#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort06#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort07#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort08#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort09#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort10#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort11#PowerPortStatus"));
+		Assertions.assertEquals(OnOffStatus.OFF, stats.get("PowerPort12#PowerPortStatus"));
 	}
 
 	/**
