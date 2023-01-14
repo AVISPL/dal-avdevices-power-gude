@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring;
+package com.avispl.symphony.dal.avdevices.power.gude.utils;
 
 import java.util.Arrays;
 
@@ -17,7 +17,8 @@ public enum DevicesMetricGroup {
 	METER("Meter"),
 	SENSOR("Sensor"),
 	OUTPUT("PowerPort"),
-	CONTROL("Control");
+	CONTROL("Control"),
+	POWER_PORT_CONFIG("PowerPortConfiguration");
 
 	private final String name;
 

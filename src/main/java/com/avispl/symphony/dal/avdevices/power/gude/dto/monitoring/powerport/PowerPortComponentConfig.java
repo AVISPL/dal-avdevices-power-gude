@@ -1,0 +1,469 @@
+package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.powerport;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
+
+import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogPingType;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
+
+/**
+ * PowerPortConfig
+ *
+ * @author Harry / Symphony Dev Team<br>
+ * Created on 14/01/2023
+ * @since 1.0.0
+ */
+public class PowerPortComponentConfig {
+
+	private WatchdogPingType watchdogPingType;
+	private OnOffStatus countPingRequest;
+	private WatchdogResetPortWhenHostDownMode watchdogResetPortWhenHostDownMode;
+	private WatchDogMode watchDogMode;
+	private ColdStart coldStart;
+
+	@JsonAlias()
+	private String name;
+
+	@JsonAlias("powup")
+	private int powerUp;
+
+	@JsonAlias("powrem")
+	private int powerRemember;
+
+	@JsonAlias("powrestore")
+	private int powerRestore;
+
+	@JsonAlias("stickylogical")
+	private int stickyLogical;
+
+	@JsonAlias("powupdelay")
+	private int powerUpDelay;
+
+	@JsonAlias("repowdelay")
+	private int repowerDelay;
+
+	@JsonAlias("reset")
+	private int reset;
+
+	@JsonAlias("wdog")
+	private int watchDog;
+
+	@JsonAlias("wtype")
+	private int watchDogType;
+
+	@JsonAlias("whost")
+	private String watchDogHost;
+
+	@JsonAlias("wport")
+	private int watchDogPort;
+
+	@JsonAlias("wretry")
+	private int watchDogRetry;
+
+	@JsonAlias("winterval")
+	private int watchDogInterval;
+
+	@JsonAlias("wrbx")
+	private int watchDogRbx;
+
+	/**
+	 * Retrieves {@link #watchdogPingType}
+	 *
+	 * @return value of {@link #watchdogPingType}
+	 */
+	public WatchdogPingType getWatchdogPingType() {
+		return watchdogPingType;
+	}
+
+	/**
+	 * Sets {@link #watchdogPingType} value
+	 *
+	 * @param watchdogPingType new value of {@link #watchdogPingType}
+	 */
+	public void setWatchdogPingType(WatchdogPingType watchdogPingType) {
+		this.watchdogPingType = watchdogPingType;
+	}
+
+	/**
+	 * Retrieves {@link #countPingRequest}
+	 *
+	 * @return value of {@link #countPingRequest}
+	 */
+	public OnOffStatus getCountPingRequest() {
+		return countPingRequest;
+	}
+
+	/**
+	 * Sets {@link #countPingRequest} value
+	 *
+	 * @param countPingRequest new value of {@link #countPingRequest}
+	 */
+	public void setCountPingRequest(OnOffStatus countPingRequest) {
+		this.countPingRequest = countPingRequest;
+	}
+
+	/**
+	 * Retrieves {@link #watchdogResetPortWhenHostDownMode}
+	 *
+	 * @return value of {@link #watchdogResetPortWhenHostDownMode}
+	 */
+	public WatchdogResetPortWhenHostDownMode getWatchdogResetPortWhenHostDownMode() {
+		return watchdogResetPortWhenHostDownMode;
+	}
+
+	/**
+	 * Sets {@link #watchdogResetPortWhenHostDownMode} value
+	 *
+	 * @param watchdogResetPortWhenHostDownMode new value of {@link #watchdogResetPortWhenHostDownMode}
+	 */
+	public void setWatchdogResetPortWhenHostDownMode(WatchdogResetPortWhenHostDownMode watchdogResetPortWhenHostDownMode) {
+		this.watchdogResetPortWhenHostDownMode = watchdogResetPortWhenHostDownMode;
+	}
+
+	/**
+	 * Retrieves {@link #watchDogMode}
+	 *
+	 * @return value of {@link #watchDogMode}
+	 */
+	public WatchDogMode getWatchDogMode() {
+		return watchDogMode;
+	}
+
+	/**
+	 * Sets {@link #watchDogMode} value
+	 *
+	 * @param watchDogMode new value of {@link #watchDogMode}
+	 */
+	public void setWatchDogMode(WatchDogMode watchDogMode) {
+		this.watchDogMode = watchDogMode;
+	}
+
+	/**
+	 * Retrieves {@link #name}
+	 *
+	 * @return value of {@link #name}
+	 */
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * Sets {@link #name} value
+	 *
+	 * @param name new value of {@link #name}
+	 */
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	/**
+	 * Retrieves {@link #powerUp}
+	 *
+	 * @return value of {@link #powerUp}
+	 */
+	public int getPowerUp() {
+		return powerUp;
+	}
+
+	/**
+	 * Sets {@link #powerUp} value
+	 *
+	 * @param powerUp new value of {@link #powerUp}
+	 */
+	public void setPowerUp(int powerUp) {
+		this.powerUp = powerUp;
+	}
+
+	/**
+	 * Retrieves {@link #powerRestore}
+	 *
+	 * @return value of {@link #powerRestore}
+	 */
+	public int getPowerRestore() {
+		return powerRestore;
+	}
+
+	/**
+	 * Sets {@link #powerRestore} value
+	 *
+	 * @param powerRestore new value of {@link #powerRestore}
+	 */
+	public void setPowerRestore(int powerRestore) {
+		this.powerRestore = powerRestore;
+	}
+
+	/**
+	 * Retrieves {@link #stickyLogical}
+	 *
+	 * @return value of {@link #stickyLogical}
+	 */
+	public int getStickyLogical() {
+		return stickyLogical;
+	}
+
+	/**
+	 * Sets {@link #stickyLogical} value
+	 *
+	 * @param stickyLogical new value of {@link #stickyLogical}
+	 */
+	public void setStickyLogical(int stickyLogical) {
+		this.stickyLogical = stickyLogical;
+	}
+
+	/**
+	 * Retrieves {@link #powerUpDelay}
+	 *
+	 * @return value of {@link #powerUpDelay}
+	 */
+	public int getPowerUpDelay() {
+		return powerUpDelay;
+	}
+
+	/**
+	 * Sets {@link #powerUpDelay} value
+	 *
+	 * @param powerUpDelay new value of {@link #powerUpDelay}
+	 */
+	public void setPowerUpDelay(int powerUpDelay) {
+		this.powerUpDelay = powerUpDelay;
+	}
+
+	/**
+	 * Retrieves {@link #repowerDelay}
+	 *
+	 * @return value of {@link #repowerDelay}
+	 */
+	public int getRepowerDelay() {
+		return repowerDelay;
+	}
+
+	/**
+	 * Sets {@link #repowerDelay} value
+	 *
+	 * @param repowerDelay new value of {@link #repowerDelay}
+	 */
+	public void setRepowerDelay(int repowerDelay) {
+		this.repowerDelay = repowerDelay;
+	}
+
+	/**
+	 * Retrieves {@link #reset}
+	 *
+	 * @return value of {@link #reset}
+	 */
+	public int getReset() {
+		return reset;
+	}
+
+	/**
+	 * Sets {@link #reset} value
+	 *
+	 * @param reset new value of {@link #reset}
+	 */
+	public void setReset(int reset) {
+		this.reset = reset;
+	}
+
+	/**
+	 * Retrieves {@link #watchDog}
+	 *
+	 * @return value of {@link #watchDog}
+	 */
+	public int getWatchDog() {
+		return watchDog;
+	}
+
+	/**
+	 * Sets {@link #watchDog} value
+	 *
+	 * @param watchDog new value of {@link #watchDog}
+	 */
+	public void setWatchDog(int watchDog) {
+		this.watchDog = watchDog;
+	}
+
+	/**
+	 * Retrieves {@link #watchDogType}
+	 *
+	 * @return value of {@link #watchDogType}
+	 */
+	public int getWatchDogType() {
+		return watchDogType;
+	}
+
+	/**
+	 * Sets {@link #watchDogType} value
+	 *
+	 * @param watchDogType new value of {@link #watchDogType}
+	 */
+	public void setWatchDogType(int watchDogType) {
+		this.watchDogType = watchDogType;
+	}
+
+	/**
+	 * Retrieves {@link #watchDogHost}
+	 *
+	 * @return value of {@link #watchDogHost}
+	 */
+	public String getWatchDogHost() {
+		return watchDogHost;
+	}
+
+	/**
+	 * Sets {@link #watchDogHost} value
+	 *
+	 * @param watchDogHost new value of {@link #watchDogHost}
+	 */
+	public void setWatchDogHost(String watchDogHost) {
+		this.watchDogHost = watchDogHost;
+	}
+
+	/**
+	 * Retrieves {@link #watchDogPort}
+	 *
+	 * @return value of {@link #watchDogPort}
+	 */
+	public int getWatchDogPort() {
+		return watchDogPort;
+	}
+
+	/**
+	 * Sets {@link #watchDogPort} value
+	 *
+	 * @param watchDogPort new value of {@link #watchDogPort}
+	 */
+	public void setWatchDogPort(int watchDogPort) {
+		this.watchDogPort = watchDogPort;
+	}
+
+	/**
+	 * Retrieves {@link #watchDogRetry}
+	 *
+	 * @return value of {@link #watchDogRetry}
+	 */
+	public int getWatchDogRetry() {
+		return watchDogRetry;
+	}
+
+	/**
+	 * Sets {@link #watchDogRetry} value
+	 *
+	 * @param watchDogRetry new value of {@link #watchDogRetry}
+	 */
+	public void setWatchDogRetry(int watchDogRetry) {
+		this.watchDogRetry = watchDogRetry;
+	}
+
+	/**
+	 * Retrieves {@link #watchDogInterval}
+	 *
+	 * @return value of {@link #watchDogInterval}
+	 */
+	public int getWatchDogInterval() {
+		return watchDogInterval;
+	}
+
+	/**
+	 * Sets {@link #watchDogInterval} value
+	 *
+	 * @param watchDogInterval new value of {@link #watchDogInterval}
+	 */
+	public void setWatchDogInterval(int watchDogInterval) {
+		this.watchDogInterval = watchDogInterval;
+	}
+
+	/**
+	 * Retrieves {@link #watchDogRbx}
+	 *
+	 * @return value of {@link #watchDogRbx}
+	 */
+	public int getWatchDogRbx() {
+		return watchDogRbx;
+	}
+
+	/**
+	 * Sets {@link #watchDogRbx} value
+	 *
+	 * @param watchDogRbx new value of {@link #watchDogRbx}
+	 */
+	public void setWatchDogRbx(int watchDogRbx) {
+		this.watchDogRbx = watchDogRbx;
+	}
+
+	/**
+	 * Retrieves {@link #coldStart}
+	 *
+	 * @return value of {@link #coldStart}
+	 */
+	public ColdStart getColdStart() {
+		return coldStart;
+	}
+
+	/**
+	 * Sets {@link #coldStart} value
+	 *
+	 * @param coldStart new value of {@link #coldStart}
+	 */
+	public void setColdStart(ColdStart coldStart) {
+		this.coldStart = coldStart;
+	}
+
+	/**
+	 * Retrieves {@link #powerRemember}
+	 *
+	 * @return value of {@link #powerRemember}
+	 */
+	public int getPowerRemember() {
+		return powerRemember;
+	}
+
+	/**
+	 * Sets {@link #powerRemember} value
+	 *
+	 * @param powerRemember new value of {@link #powerRemember}
+	 */
+	public void setPowerRemember(int powerRemember) {
+		this.powerRemember = powerRemember;
+	}
+
+	public void mapWatchdogTypeToDTO() {
+		if ((watchDogType & DeviceConstant.WATCHDOG_ICMP) == DeviceConstant.WATCHDOG_ICMP) {
+			watchdogPingType = WatchdogPingType.ICMP;
+		}
+		if ((watchDogType & DeviceConstant.WATCHDOG_TCP) == DeviceConstant.WATCHDOG_TCP) {
+			watchdogPingType = WatchdogPingType.TCP;
+		}
+		if ((watchDogType & DeviceConstant.RESET_PORT_ENABLED) == DeviceConstant.RESET_PORT_ENABLED) {
+			watchDogMode = WatchDogMode.RESET_PORT_WHEN_HOST_DOWN;
+		}
+		if ((watchDogType & DeviceConstant.INFINITE_WAIT) == DeviceConstant.INFINITE_WAIT) {
+			watchdogResetPortWhenHostDownMode = WatchdogResetPortWhenHostDownMode.INFINITE_WAIT;
+		}
+		if ((watchDogType & DeviceConstant.REPEAT_RESET) == DeviceConstant.REPEAT_RESET) {
+			watchdogResetPortWhenHostDownMode = WatchdogResetPortWhenHostDownMode.REPEAT_RESET;
+		}
+		if ((watchDogType & DeviceConstant.SWITCH_OFF_ONCE) == DeviceConstant.SWITCH_OFF_ONCE) {
+			watchDogMode = WatchDogMode.SWITCH_OFF_ONCE;
+		}
+		if ((watchDogType & DeviceConstant.SWITCH_WHEN_HOST_UP) == DeviceConstant.SWITCH_WHEN_HOST_UP) {
+			watchDogMode = WatchDogMode.IP_MASTER_SLAVE_PORT_HOST_COME_UP;
+		}
+		if ((watchDogType & DeviceConstant.SWITCH_WHEN_HOST_DOWN) == DeviceConstant.SWITCH_WHEN_HOST_DOWN) {
+			watchDogMode = WatchDogMode.IP_MASTER_SLAVE_PORT_HOST_GOES_DOWN;
+		}
+		if ((watchDogType & DeviceConstant.COUNT_PING_REQUESTS) == DeviceConstant.COUNT_PING_REQUESTS) {
+			countPingRequest = OnOffStatus.ON;
+		}
+
+		coldStart = ColdStart.OFF;
+		if (powerUp == 1) {
+			coldStart = ColdStart.ON;
+		}
+		if (powerRemember == 1) {
+			coldStart = ColdStart.REMEMBER_LAST_STATE;
+		}
+	}
+}
