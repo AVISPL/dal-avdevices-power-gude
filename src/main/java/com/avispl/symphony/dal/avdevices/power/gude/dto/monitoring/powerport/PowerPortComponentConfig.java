@@ -30,11 +30,8 @@ public class PowerPortComponentConfig {
 	@JsonAlias("powup")
 	private int powerUp;
 
-	@JsonAlias("powrem")
-	private int powerRemember;
-
 	@JsonAlias("powrestore")
-	private int powerRestore;
+	private int powerRemember;
 
 	@JsonAlias("stickylogical")
 	private int stickyLogical;
@@ -175,24 +172,6 @@ public class PowerPortComponentConfig {
 	 */
 	public void setPowerUp(int powerUp) {
 		this.powerUp = powerUp;
-	}
-
-	/**
-	 * Retrieves {@link #powerRestore}
-	 *
-	 * @return value of {@link #powerRestore}
-	 */
-	public int getPowerRestore() {
-		return powerRestore;
-	}
-
-	/**
-	 * Sets {@link #powerRestore} value
-	 *
-	 * @param powerRestore new value of {@link #powerRestore}
-	 */
-	public void setPowerRestore(int powerRestore) {
-		this.powerRestore = powerRestore;
 	}
 
 	/**
@@ -456,6 +435,8 @@ public class PowerPortComponentConfig {
 		}
 		if ((watchDogType & DeviceConstant.COUNT_PING_REQUESTS) == DeviceConstant.COUNT_PING_REQUESTS) {
 			countPingRequest = OnOffStatus.ON;
+		} else {
+			countPingRequest = OnOffStatus.OFF;
 		}
 
 		coldStart = ColdStart.OFF;
@@ -465,5 +446,54 @@ public class PowerPortComponentConfig {
 		if (powerRemember == 1) {
 			coldStart = ColdStart.REMEMBER_LAST_STATE;
 		}
+	}
+
+	/**
+	 * Contribute output control request
+	 *
+	 * @return String request
+	 */
+	public String contributePowerPortConfigRequest() {
+
+		if (watchdogPingType.equals(WatchdogPingType.TCP)) {
+			watchDogType = 1;
+		} else {
+			watchDogType = 0;
+		}
+		switch (watchDogMode) {
+			case RESET_PORT_WHEN_HOST_DOWN:
+				watchDogType += DeviceConstant.RESET_PORT_ENABLED;
+				if (watchdogResetPortWhenHostDownMode.equals(WatchdogResetPortWhenHostDownMode.REPEAT_RESET)) {
+					watchDogType += DeviceConstant.REPEAT_RESET;
+				}
+				break;
+			case IP_MASTER_SLAVE_PORT_HOST_COME_UP:
+				watchDogType += DeviceConstant.SWITCH_WHEN_HOST_UP;
+				break;
+			case IP_MASTER_SLAVE_PORT_HOST_GOES_DOWN:
+				watchDogType += DeviceConstant.SWITCH_WHEN_HOST_DOWN;
+				break;
+			case SWITCH_OFF_ONCE:
+				watchDogType += DeviceConstant.SWITCH_OFF_ONCE;
+				break;
+			default:
+				break;
+		}
+		return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
+						+ "&name=%s"
+						+ "&powup=%s"
+						+ "&powrem=%s"
+						+ "&idle=%s"
+						+ "&on_again=%s"
+						+ "&reset=%s"
+						+ "&we=%s"
+						+ "&wip=%s"
+						+ "&wt=%s"
+						+ "&wrbx=%s"
+						+ "&wport=%s"
+						+ "&wint=%s"
+						+ "&wret=%s"
+						+ "&wtype=%s", name, powerUp, powerRemember, powerUpDelay, repowerDelay, reset, watchDog, watchDogHost, watchdogPingType, watchDogRbx, watchDogPort, watchDogInterval, watchDogRetry,
+				watchDogType);
 	}
 }

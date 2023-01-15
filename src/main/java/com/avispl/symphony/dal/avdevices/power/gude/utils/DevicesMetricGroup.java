@@ -48,6 +48,9 @@ public enum DevicesMetricGroup {
 	 * @return DevicesMetricGroup is the device metric group that want to get
 	 */
 	public static DevicesMetricGroup getByName(String name) {
+		if (name.equals(DevicesMetricGroup.POWER_PORT_CONFIG.getName())) {
+			return DevicesMetricGroup.POWER_PORT_CONFIG;
+		}
 		return Arrays.stream(DevicesMetricGroup.values()).filter(group -> name.contains(group.getName())).findFirst()
 				.orElseThrow(() -> new IllegalStateException(String.format("control group %s is not supported.", name)));
 	}

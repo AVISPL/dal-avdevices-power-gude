@@ -1,16 +1,20 @@
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 
 /**
  * GudePDU8045Comunicator
@@ -223,5 +227,61 @@ class GudePDU8045CommunicatorTest {
 		communicator.getMultipleStatistics();
 
 		Assertions.assertEquals("On", stats.get("PowerPort01PowerPortStatus"));
+	}
+
+	/**
+	 * Test GudePDU8045Communicator.controlProperty PowerPortConfig:
+	 *
+	 * Expected: control successfully
+	 */
+	@Test
+	void testPowerPortConfigChoosePort() throws Exception {
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String propertyName = DevicesMetricGroup.POWER_PORT_CONFIG.getName() + DeviceConstant.HASH + PowerPortConfigMetric.CHOOSE_POWER_PORT.getUiName();
+		String propertyValue = "3:Power Port 3";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(propertyValue);
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+
+		List<AdvancedControllableProperty> advancedControllableProperties = statistics.getControllableProperties();
+		AdvancedControllableProperty advancedControllableProperty = advancedControllableProperties.stream().filter(control -> propertyName.equals(control.getName())).findFirst().orElse(null);
+		String valueAfterControl = (String) Optional.ofNullable(advancedControllableProperty.getValue()).orElse(DeviceConstant.NONE);
+
+		Assertions.assertEquals(propertyValue, valueAfterControl);
+	}
+
+	/**
+	 * Test GudePDU8045Communicator.controlProperty PowerPortConfig:
+	 *
+	 * Expected: control successfully
+	 */
+	@Test
+	void testPowerPortConfigLabel() throws Exception {
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String propertyName = DevicesMetricGroup.POWER_PORT_CONFIG.getName() + DeviceConstant.HASH + PowerPortConfigMetric.CHOOSE_POWER_PORT.getUiName();
+		String propertyValue = "3:Power Port";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(propertyValue);
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+
+		propertyName = DevicesMetricGroup.POWER_PORT_CONFIG.getName() + DeviceConstant.HASH + PowerPortConfigMetric.CUSTOM_LABEL.getUiName();
+		propertyValue = "Power Port Update";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(propertyValue);
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+
+		List<AdvancedControllableProperty> advancedControllableProperties = statistics.getControllableProperties();
+		String finalPropertyName = propertyName;
+		AdvancedControllableProperty advancedControllableProperty = advancedControllableProperties.stream().filter(control -> finalPropertyName.equals(control.getName())).findFirst().orElse(null);
+		String valueAfterControl = (String) Optional.ofNullable(advancedControllableProperty.getValue()).orElse(DeviceConstant.NONE);
+
+		Assertions.assertEquals(propertyValue, valueAfterControl);
 	}
 }

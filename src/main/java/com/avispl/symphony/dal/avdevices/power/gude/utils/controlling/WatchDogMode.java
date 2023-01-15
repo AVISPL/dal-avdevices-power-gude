@@ -16,8 +16,8 @@ public enum WatchDogMode {
 
 	RESET_PORT_WHEN_HOST_DOWN("Reset port when host down", "32"),
 	SWITCH_OFF_ONCE("Switch off once when host down", "16"),
-	IP_MASTER_SLAVE_PORT_HOST_COME_UP("host comes up −> switch on, host goes down −> switch off", "4"),
-	IP_MASTER_SLAVE_PORT_HOST_GOES_DOWN("host comes up −> switch on, host goes down −> switch off", "8");
+	IP_MASTER_SLAVE_PORT_HOST_COME_UP("Host comes up then switch on, host goes down then switch off", "4"),
+	IP_MASTER_SLAVE_PORT_HOST_GOES_DOWN("Host comes up then switch on, host goes down then switch off", "8");
 
 	private final String uiName;
 	private final String apiName;
