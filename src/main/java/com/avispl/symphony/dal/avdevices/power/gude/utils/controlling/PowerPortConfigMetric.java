@@ -12,7 +12,7 @@ import java.util.Arrays;
  * Created on 12/27/2022
  * @since 1.0.0
  */
-public enum PowerPorConfigMetric {
+public enum PowerPortConfigMetric {
 
 	CHOOSE_POWER_PORT("ChoosePowerPort", "p"),
 	CUSTOM_LABEL("CustomLabel", "name"),
@@ -28,11 +28,12 @@ public enum PowerPorConfigMetric {
 	WATCHDOG_PING_RETRIES("WatchdogPingRetries", "wret"),
 	WATCHDOG_TCP_PORT("WatchDogTCPPort", "wport"),
 	WATCHDOG_MODE("WatchDogMode", "wtype"),
-	WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN("ResetPortWhenHostDown", "wtype"),
-	WATCH_DOG_DELAY_BOOTING_TIME("WatchDogDelayBootingTime(s)", "wtype"),
-	COUNT_PING_REQUEST("CountPINGRequestsAsUnRepliedWhenEthernetLinkDown", "wtype"),
+	WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN("ResetPortWhenHostDown", ""),
+	WATCH_DOG_DELAY_BOOTING_TIME("WatchDogDelayBootingTime(s)", ""),
+	COUNT_PING_REQUEST("CountPINGRequestsAsUnRepliedWhenEthernetLinkDown", ""),
 	APPLY_CHANGES("ApplyChanges", ""),
 	CANCEL_CHANGES("CancelChanges", ""),
+	EDITED("Edited", ""),
 
 	ERROR("None", "None");
 	private final String uiName;
@@ -44,7 +45,7 @@ public enum PowerPorConfigMetric {
 	 * @param name metric name
 	 * @param command metric command
 	 */
-	PowerPorConfigMetric(String name, String command) {
+	PowerPortConfigMetric(String name, String command) {
 		this.uiName = name;
 		this.command = command;
 	}
@@ -73,8 +74,8 @@ public enum PowerPorConfigMetric {
 	 * @param uiName is ui name of power port config
 	 * @return PowerPorConfigMetric power port config metric
 	 */
-	public static PowerPorConfigMetric getByUIName(String uiName) {
-		return Arrays.stream(PowerPorConfigMetric.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(PowerPorConfigMetric.ERROR);
+	public static PowerPortConfigMetric getByUIName(String uiName) {
+		return Arrays.stream(PowerPortConfigMetric.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(PowerPortConfigMetric.ERROR);
 	}
 
 }
