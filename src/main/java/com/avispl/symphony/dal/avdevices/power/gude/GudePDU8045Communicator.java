@@ -4,6 +4,8 @@
 package com.avispl.symphony.dal.avdevices.power.gude;
 
 import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createDropdown;
+import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createNumeric;
+import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createText;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,9 +41,12 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
+import com.avispl.symphony.dal.avdevices.power.gude.dto.DeviceConfigData;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.DeviceMonitoringData;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.misc.Misc;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.output.Output;
+import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.powerport.PowerPortComponentConfig;
+import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.powerport.PowerPortConfig;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.SensorDescription;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.SensorField;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.SensorFieldValue;
@@ -51,14 +56,20 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.AuthorizationChallenge
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceInfoMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceURL;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.EnumTypeHandler;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorField;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorType;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputControllingMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputMode;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputStatus;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WaitingTimeUnit;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.DevicesMetricGroup;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogIPMasterSlavePort;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogPingType;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.HistoricalProperties;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.SwitchOnOffStatus;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
@@ -77,6 +88,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private boolean isEmergencyDelivery;
 	private ExtendedStatistics localExtendedStatistics = new ExtendedStatistics();
 	private DeviceMonitoringData cachedMonitoringStatus;
+	private boolean isPowerPortConfigEdited;
 
 	private Map<String, Boolean> isAdvanceMonitoringGroups = new HashMap<>();
 	private List<Boolean> isOutputsControlEdited = new ArrayList<>();
@@ -94,6 +106,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * Stored list control value of waitingTime controllable property
 	 */
 	private List<String> waitingTimeValues = new ArrayList<>();
+
+	/**
+	 * Stored list control value of choose power port controllable property
+	 */
+	private List<String> choosePowerPortValues;
 
 	/**
 	 * Stored supported sensor type code
@@ -114,6 +131,16 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * Cached outputs control data
 	 */
 	private List<Output> cachedOutputsControl = new ArrayList<>();
+
+	/**
+	 * Cached power port config data
+	 */
+	private PowerPortConfig cachedPowerPortConfig;
+
+	/**
+	 * Cached current power port config index data
+	 */
+	private int cachedCurrentPowerPortConfigIndex = 0;
 
 	/**
 	 * ReentrantLock to prevent null pointer exception to localExtendedStatistics when controlProperty method is called before GetMultipleStatistics method.
@@ -185,6 +212,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					login();
 				}
 				retrieveDeviceMonitoringData(stats, advancedControllableProperties);
+				if (isConfigManagement) {
+					retrieveDeviceConfigData(stats, advancedControllableProperties);
+				}
 				populateDynamicStats(stats, dynamicStats);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setDynamicStatistics(dynamicStats);
@@ -214,8 +244,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				this.logger.debug("controlProperty property " + property);
 				this.logger.debug("controlProperty value " + value);
 			}
-			if (property.contains(String.valueOf(DeviceConstant.HASH))) {
-				String[] splitProperty = property.split(String.valueOf(DeviceConstant.HASH));
+			if (property.contains(DeviceConstant.HASH)) {
+				String[] splitProperty = property.split(DeviceConstant.HASH);
 				String controlGroup = splitProperty[0];
 				DevicesMetricGroup group = DevicesMetricGroup.getByName(controlGroup);
 
@@ -226,6 +256,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					case OUTPUT:
 						int outputIndex = Integer.parseInt(controlGroup.substring(DevicesMetricGroup.OUTPUT.getName().length(), 11)) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
 						powerPortControl(stats, advancedControllableProperties, splitProperty[1], value, outputIndex);
+						break;
+					case POWER_PORT_CONFIG:
+						powerPortConfig(stats, advancedControllableProperties, splitProperty[1], value);
 						break;
 					default:
 						throw new IllegalStateException(String.format("Control group %s is not supported", controlGroup));
@@ -507,8 +540,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					if (!supportedSensorFields.containsKey(sensorField.getName()) || sensorFieldValue == null) {
 						continue;
 					}
-					fieldName = supportedSensorFields.get(getDefaultValueForNullData(sensorField.getName()));
-					unit = getDefaultValueForNullData(sensorField.getUnit()).replaceAll(DeviceConstant.SPACE_REGEX, DeviceConstant.EMPTY);
+					fieldName = supportedSensorFields.get(getDefaultValueForNullData(sensorField.getName(), DeviceConstant.NONE));
+					unit = getDefaultValueForNullData(sensorField.getUnit(), DeviceConstant.NONE).replaceAll(DeviceConstant.SPACE_REGEX, DeviceConstant.EMPTY);
 
 					// format field value base on the decPrecision returned from the device
 					String numberFormat = sensorField.getDecPrecision() != null ? "%.".concat(sensorField.getDecPrecision()).concat("f") : DeviceConstant.DEFAULT_DEC_PRECISION_FORMAT;
@@ -586,11 +619,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				removeUnusedStatsAndControls(stats, advancedControllableProperties, unusedKeys);
 
 				for (Output output : cachedMonitoringStatus.getOutputs()) {
-					if (output.getState().toString().equals(OutputStatus.ON.getApiName())) {
+					if (output.getState().toString().equals(OnOffStatus.ON.getApiName())) {
 						isAllPortOff = false;
 						continue;
 					}
-					if (output.getState().toString().equals(OutputStatus.OFF.getApiName())) {
+					if (output.getState().toString().equals(OnOffStatus.OFF.getApiName())) {
 						isAllPortOn = false;
 					}
 				}
@@ -673,7 +706,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private void populateOutputsControl(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, int outputIndex) {
 		Output realtimeOutputConfig = cachedMonitoringStatus.getOutputs().get(outputIndex);
 		int outputsSize = cachedMonitoringStatus.getOutputs().size();
-		OutputStatus outputStatus = OutputStatus.getByAPIName(String.valueOf(realtimeOutputConfig.getState() % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
+		OnOffStatus outputStatus = OnOffStatus.getByAPIName(String.valueOf(realtimeOutputConfig.getState() % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
 		if (isOutputsControlEdited.size() < outputsSize || !isOutputsControlEdited.get(outputIndex)) {
 			OutputMode outputMode = OutputMode.getByUIName(outputStatus.getUiName());
 			realtimeOutputConfig.setOutputMode(outputMode);
@@ -707,13 +740,13 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String applyChangesLabel = groupName.concat(OutputControllingMetric.APPLY_CHANGES);
 		String cancelChangesLabel = groupName.concat(OutputControllingMetric.CANCEL_CHANGES);
 		List<String> outputModes = EnumTypeHandler.getListOfEnumNames(OutputMode.class, OutputMode.ERROR);
-		List<String> batchSwitchModes = EnumTypeHandler.getListOfEnumNames(OutputStatus.class, OutputStatus.ERROR);
+		List<String> batchSwitchModes = EnumTypeHandler.getListOfEnumNames(OnOffStatus.class, OnOffStatus.ERROR);
 		List<String> batchWaitingTimeUnitModes = EnumTypeHandler.getListOfEnumNames(WaitingTimeUnit.class, WaitingTimeUnit.ERROR);
 		Set<String> unusedKeys = new HashSet<>();
 
 		List<Integer> batch = output.getBatch();
-		OutputStatus batchInitSwitchValue = OutputStatus.getByAPIName(String.valueOf(batch.get(DeviceConstant.INIT_SWITCH_INDEX) % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
-		OutputStatus batchEndSwitchValue = OutputStatus.getByAPIName(String.valueOf(batch.get(DeviceConstant.END_SWITCH_INDEX) % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
+		OnOffStatus batchInitSwitchValue = OnOffStatus.getByAPIName(String.valueOf(batch.get(DeviceConstant.INIT_SWITCH_INDEX) % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
+		OnOffStatus batchEndSwitchValue = OnOffStatus.getByAPIName(String.valueOf(batch.get(DeviceConstant.END_SWITCH_INDEX) % DeviceConstant.ON_OFF_SWITCH_API_FACTOR));
 		OutputMode outputMode = output.getOutputMode();
 		WaitingTimeUnit waitingTimeUnit = output.getWaitingTimeUnit();
 		String waitingTime = output.getWaitingTime();
@@ -722,12 +755,12 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		}
 		if (batch.get(1) != 0) {
 			String remainingTime = convertSecondToDuration(batch.get(1));
-			stats.put(batchCountDown, String.format("Switch to %s in %s", OutputStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
+			stats.put(batchCountDown, String.format("Switch to %s in %s", OnOffStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
 			powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT);
 			unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
 		}
 
-		stats.put(powerPortStatusOnDashBoardLabel, getDefaultValueForNullData(outputStatus.getUiName()));
+		stats.put(powerPortStatusOnDashBoardLabel, getDefaultValueForNullData(outputStatus.getUiName(), DeviceConstant.NONE));
 
 		if (isConfigManagement) {
 			if (isOutputsControlEdited.get(outputIndex)) {
@@ -769,14 +802,14 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT));
 			}
 			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
-			stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName()));
+			stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName(), DeviceConstant.NONE));
 			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
 		}
 		removeUnusedStatsAndControls(stats, advancedControllableProperties, unusedKeys);
 	}
 
 	/**
-	 * handle sensor advance monitoring control
+	 * handle power port control
 	 *
 	 * @param stats store all statistics
 	 * @param advancedControllableProperties store all controllable properties
@@ -795,12 +828,12 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				cachedOutput.setOutputMode(outputMode);
 				break;
 			case OutputControllingMetric.POWER_PORT_BATCH_INIT_SWITCH:
-				OutputStatus outputStatus = OutputStatus.getByUIName(value);
+				OnOffStatus outputStatus = OnOffStatus.getByUIName(value);
 				List<Integer> batch = cachedOutput.getBatch();
 				batch.set(DeviceConstant.INIT_SWITCH_INDEX, Integer.parseInt(outputStatus.getApiName()));
 				break;
 			case OutputControllingMetric.POWER_PORT_BATCH_END_SWITCH:
-				outputStatus = OutputStatus.getByUIName(value);
+				outputStatus = OnOffStatus.getByUIName(value);
 				batch = cachedOutput.getBatch();
 				batch.set(DeviceConstant.END_SWITCH_INDEX, Integer.parseInt(outputStatus.getApiName()));
 				cachedBatch.set(outputIndex, outputStatus.getApiName());
@@ -862,6 +895,384 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	//--------------------------------------------------------------------------------------------------------------------------------
 	//endregion
 
+	//region power port config
+	//--------------------------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * This method is used to retrieve monitoring status by send get request to "http://<IP>/statusjsn.js?components=9029395"
+	 * When the response is null or empty, the failedMonitor is going to update and exception is not populated
+	 *
+	 * @param stats store all statistics
+	 * @param advancedControllableProperties store all controllable properties
+	 * @throws FailedLoginException when login fails
+	 */
+	private void retrieveDeviceConfigData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
+		String request = buildDeviceFullPath(DeviceURL.DEVICE_CONFIG);
+		try {
+			DeviceConfigData deviceConfigData = doGetWithRetryOnUnauthorized(request, DeviceConfigData.class, true);
+			if (deviceConfigData == null) {
+				throw new ResourceNotReachableException("Error while retrieving device configuration data: response data is empty");
+			}
+			if (!isPowerPortConfigEdited) {
+				cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();
+			}
+			List<PowerPortComponentConfig> powerPorts = deviceConfigData.getPowerPortConfig().getPowerPortComponentConfigs();
+			choosePowerPortValues = new ArrayList<>();
+			for (int i = DeviceConstant.MIN_PORT; i <= DeviceConstant.MAX_PORT; i++) {
+				choosePowerPortValues.add(i + DeviceConstant.COLON + powerPorts.get(i - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR).getName());
+			}
+			populateDeviceConfig(stats, advancedControllableProperties);
+		} catch (Exception e) {
+			throw new ResourceNotReachableException(String.format("Error while retrieving device configuration data: %s", e.getMessage()), e);
+		}
+	}
+
+	/**
+	 * populate device configuration data
+	 *
+	 * @param stats store all statistics
+	 * @param advancedControllableProperties store all controllable properties
+	 */
+	private void populateDeviceConfig(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
+
+		PowerPortComponentConfig powerPortComponentConfig = cachedPowerPortConfig.getPowerPortComponentConfigs().get(cachedCurrentPowerPortConfigIndex);
+		if (!isPowerPortConfigEdited) {
+			powerPortComponentConfig.mapWatchdogTypeToDTO();
+		}
+
+		String groupName = DevicesMetricGroup.POWER_PORT_CONFIG.getName().concat(DeviceConstant.HASH);
+		String choosePowerPortLabel = groupName.concat(PowerPortConfigMetric.CHOOSE_POWER_PORT.getUiName());
+		String portLabel = groupName.concat(PowerPortConfigMetric.CUSTOM_LABEL.getUiName());
+		String coldStartLabel = groupName.concat(PowerPortConfigMetric.INITIALIZATION_STATUS.getUiName());
+		String initDelayLabel = groupName.concat(PowerPortConfigMetric.INITIALIZATION_DELAY.getUiName());
+		String repowerDelayLabel = groupName.concat(PowerPortConfigMetric.REPOWER_DELAY.getUiName());
+		String resetDurationLabel = groupName.concat(PowerPortConfigMetric.RESET_DURATION.getUiName());
+		String watchdogLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG.getUiName());
+		String watchdogPingTypeLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_PING_TYPE.getUiName());
+		String watchdogTcpPortLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_TCP_PORT.getUiName());
+		String watchdogHostNameLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_HOST_NAME.getUiName());
+		String watchdogPingIntervalLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_PING_INTERVAL.getUiName());
+		String watchdogPingRetriesLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_PING_RETRIES.getUiName());
+		String watchDogModeLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE.getUiName());
+		String watchdogModeResetPortWhenHostDownLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN.getUiName());
+		String watchdogModeIPSlavePortLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE_IP_MASTER_SLAVE_PORT.getUiName());
+		String countPingRequestLabel = groupName.concat(PowerPortConfigMetric.COUNT_PING_REQUEST.getUiName());
+		String watchdogDelayBootingTimeLabel = groupName.concat(PowerPortConfigMetric.WATCH_DOG_DELAY_BOOTING_TIME.getUiName());
+		String watchdogModeResetPortPreviousChoosingLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE_STATUS.getUiName());
+		String applyChangesLabel = groupName.concat(PowerPortConfigMetric.APPLY_CHANGES.getUiName());
+		String cancelChanges = groupName.concat(PowerPortConfigMetric.CANCEL_CHANGES.getUiName());
+		String editedLabel = groupName.concat(PowerPortConfigMetric.EDITED.getUiName());
+
+		OnOffStatus watchDog = OnOffStatus.getByAPIName(String.valueOf(powerPortComponentConfig.getWatchDog()));
+
+		List<String> coldStartModes = EnumTypeHandler.getListOfEnumNames(ColdStart.class, ColdStart.ERROR);
+		List<String> pingTypeModes = EnumTypeHandler.getListOfEnumNames(WatchdogPingType.class, WatchdogPingType.ERROR);
+		List<String> watchdogModes = EnumTypeHandler.getListOfEnumNames(WatchDogMode.class);
+		List<String> resetPortWhenHostDownModes = EnumTypeHandler.getListOfEnumNames(WatchdogResetPortWhenHostDownMode.class, WatchdogResetPortWhenHostDownMode.ERROR);
+		List<String> ipMasterSlavePortModes = EnumTypeHandler.getListOfEnumNames(WatchdogIPMasterSlavePort.class, WatchdogIPMasterSlavePort.ERROR);
+
+		Set<String> unusedKeys = new HashSet<>();
+
+		if (!isPowerPortConfigEdited) {
+			unusedKeys.add(applyChangesLabel);
+			unusedKeys.add(cancelChanges);
+		}
+		if (powerPortComponentConfig.getWatchdogPingType().equals(WatchdogPingType.ICMP)) {
+			unusedKeys.add(watchdogTcpPortLabel);
+		}
+		if (watchDog.equals(OnOffStatus.OFF)) {
+			unusedKeys.add(watchdogPingTypeLabel);
+			unusedKeys.add(watchdogTcpPortLabel);
+			unusedKeys.add(watchdogHostNameLabel);
+			unusedKeys.add(watchdogPingIntervalLabel);
+			unusedKeys.add(watchdogPingRetriesLabel);
+			unusedKeys.add(watchDogModeLabel);
+			unusedKeys.add(countPingRequestLabel);
+			unusedKeys.add(watchdogDelayBootingTimeLabel);
+			unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
+			unusedKeys.add(watchdogModeIPSlavePortLabel);
+			unusedKeys.add(watchdogModeResetPortPreviousChoosingLabel);
+		}
+
+		switch (powerPortComponentConfig.getWatchDogMode()) {
+			case RESET_PORT_WHEN_HOST_DOWN:
+				if (WatchdogResetPortWhenHostDownMode.INFINITE_WAIT.equals(powerPortComponentConfig.getWatchdogResetPortWhenHostDownMode())) {
+					unusedKeys.add(watchdogDelayBootingTimeLabel);
+				}
+				unusedKeys.add(watchdogModeIPSlavePortLabel);
+				break;
+			case IP_MASTER_SLAVE_PORT:
+				unusedKeys.add(watchdogDelayBootingTimeLabel);
+				unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
+				break;
+			case SWITCH_OFF_ONCE:
+				unusedKeys.add(watchdogDelayBootingTimeLabel);
+				unusedKeys.add(watchdogModeIPSlavePortLabel);
+				unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
+				break;
+			default:
+				logger.debug(String.format("Unsupported watchdog mode: %s", powerPortComponentConfig.getWatchDogMode()));
+				break;
+		}
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createDropdown(choosePowerPortLabel, choosePowerPortValues, choosePowerPortValues.get(cachedCurrentPowerPortConfigIndex)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createText(portLabel, getDefaultValueForNullData(Optional.ofNullable(powerPortComponentConfig.getNewName()).orElse(powerPortComponentConfig.getName()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createDropdown(coldStartLabel, coldStartModes, powerPortComponentConfig.getColdStart().getUiName()));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createNumeric(initDelayLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getPowerUpDelay()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createNumeric(repowerDelayLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getRepowerDelay()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createNumeric(resetDurationLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getReset()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createSwitch(watchdogLabel, watchDog.equals(OnOffStatus.ON), DeviceConstant.DISABLE, DeviceConstant.ENABLE));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createDropdown(watchdogPingTypeLabel, pingTypeModes, powerPortComponentConfig.getWatchdogPingType().getUiName()));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createNumeric(watchdogTcpPortLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getWatchDogPort()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createText(watchdogHostNameLabel, getDefaultValueForNullData(powerPortComponentConfig.getWatchDogHost(), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createNumeric(watchdogPingIntervalLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getWatchDogInterval()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createNumeric(watchdogPingRetriesLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getWatchDogRetry()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createDropdown(watchDogModeLabel, watchdogModes, powerPortComponentConfig.getWatchDogMode().getUiName()));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createDropdown(watchdogModeResetPortWhenHostDownLabel, resetPortWhenHostDownModes, powerPortComponentConfig.getWatchdogResetPortWhenHostDownMode().getUiName()));
+		if (powerPortComponentConfig.getWatchDogMode().equals(WatchDogMode.IP_MASTER_SLAVE_PORT)) {
+			addAdvanceControlProperties(advancedControllableProperties, stats,
+					createDropdown(watchdogModeIPSlavePortLabel, ipMasterSlavePortModes, powerPortComponentConfig.getWatchdogIPMasterSlavePort().getUiName()));
+		}
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createNumeric(watchdogDelayBootingTimeLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getWatchDogRbx()), DeviceConstant.EMPTY)));
+		addAdvanceControlProperties(advancedControllableProperties, stats,
+				createSwitch(countPingRequestLabel, powerPortComponentConfig.getCountPingRequest().equals(OnOffStatus.ON), DeviceConstant.DISABLE, DeviceConstant.ENABLE));
+		addAdvanceControlProperties(advancedControllableProperties, stats, createButton(applyChangesLabel, DeviceConstant.APPLY, DeviceConstant.APPLYING));
+		addAdvanceControlProperties(advancedControllableProperties, stats, createButton(cancelChanges, DeviceConstant.CANCEL, DeviceConstant.CANCELING));
+		stats.put(editedLabel, toPascalCase(String.valueOf(isPowerPortConfigEdited)));
+		removeUnusedStatsAndControls(stats, advancedControllableProperties, unusedKeys);
+	}
+
+	/**
+	 * handle power port config
+	 *
+	 * @param stats store all statistics
+	 * @param advancedControllableProperties store all controllable properties
+	 * @param controllableProperty controllable property
+	 * @param value value of controllable property
+	 */
+	private void powerPortConfig(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, String controllableProperty, String value) {
+		PowerPortConfigMetric powerPortConfigMetric = PowerPortConfigMetric.getByUIName(controllableProperty);
+		PowerPortComponentConfig powerPortComponentConfig = cachedPowerPortConfig.getPowerPortComponentConfigs().get(cachedCurrentPowerPortConfigIndex);
+
+		isEmergencyDelivery = true;
+		isPowerPortConfigEdited = true;
+		switch (powerPortConfigMetric) {
+			case CHOOSE_POWER_PORT:
+				cachedCurrentPowerPortConfigIndex = Integer.parseInt(value.split(DeviceConstant.COLON)[0]) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
+				powerPortComponentConfig = cachedPowerPortConfig.getPowerPortComponentConfigs().get(cachedCurrentPowerPortConfigIndex);
+				isPowerPortConfigEdited = false;
+				break;
+			case CUSTOM_LABEL:
+				powerPortComponentConfig.setNewName(value);
+				break;
+			case INITIALIZATION_STATUS:
+				ColdStart coldStart = ColdStart.getByUIName(value);
+				switch (coldStart) {
+					case ON:
+					case OFF:
+						powerPortComponentConfig.setPowerUp(Integer.parseInt(coldStart.getApiName()));
+						powerPortComponentConfig.setPowerRemember(Integer.parseInt(ColdStart.OFF.getApiName()));
+						break;
+					case REMEMBER_LAST_STATE:
+						powerPortComponentConfig.setPowerRemember(Integer.parseInt(coldStart.getApiName()));
+						powerPortComponentConfig.setPowerUp(Integer.parseInt(ColdStart.OFF.getApiName()));
+						break;
+					default:
+						logger.error(String.format("Cold Start %s is not supported", value));
+						break;
+				}
+				powerPortComponentConfig.setColdStart(coldStart);
+				break;
+			case INITIALIZATION_DELAY:
+				int valueInInt = powerPortComponentConfig.getPowerUpDelay();
+				try {
+					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.INITIALIZATION_DELAY_MAX) {
+						valueInInt = DeviceConstant.INITIALIZATION_DELAY_MAX;
+					}
+					if (valueInInt < DeviceConstant.INITIALIZATION_DELAY_MIN) {
+						valueInInt = DeviceConstant.INITIALIZATION_DELAY_MIN;
+					}
+				} catch (NumberFormatException e) {
+					if (value.length() > String.valueOf(DeviceConstant.INITIALIZATION_DELAY_MAX).length()) {
+						valueInInt = DeviceConstant.INITIALIZATION_DELAY_MAX;
+					}
+				}
+				powerPortComponentConfig.setPowerUpDelay(valueInInt);
+				break;
+			case REPOWER_DELAY:
+				valueInInt = powerPortComponentConfig.getRepowerDelay();
+				try {
+					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.REPOWER_DELAY_MAX) {
+						valueInInt = DeviceConstant.REPOWER_DELAY_MAX;
+					}
+					if (valueInInt < DeviceConstant.REPOWER_DELAY_MIN) {
+						valueInInt = DeviceConstant.REPOWER_DELAY_MIN;
+					}
+				} catch (NumberFormatException e) {
+					if (value.length() > String.valueOf(DeviceConstant.REPOWER_DELAY_MAX).length()) {
+						valueInInt = DeviceConstant.REPOWER_DELAY_MAX;
+					}
+				}
+				powerPortComponentConfig.setRepowerDelay(valueInInt);
+				break;
+			case RESET_DURATION:
+				valueInInt = powerPortComponentConfig.getReset();
+				try {
+					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.RESET_DURATION_MAX) {
+						valueInInt = DeviceConstant.RESET_DURATION_MAX;
+					}
+					if (valueInInt < DeviceConstant.RESET_DURATION_MIN) {
+						valueInInt = DeviceConstant.RESET_DURATION_MIN;
+					}
+				} catch (NumberFormatException e) {
+					if (value.length() > String.valueOf(DeviceConstant.RESET_DURATION_MAX).length()) {
+						valueInInt = DeviceConstant.RESET_DURATION_MAX;
+					}
+				}
+				powerPortComponentConfig.setReset(valueInInt);
+				break;
+			case WATCHDOG:
+				OnOffStatus watchDog = OnOffStatus.getByAPIName(value);
+				powerPortComponentConfig.setWatchDog(Integer.parseInt(watchDog.getApiName()));
+				break;
+			case WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN:
+				WatchdogResetPortWhenHostDownMode resetPortWhenHostDownMode = WatchdogResetPortWhenHostDownMode.getByUIName(value);
+				powerPortComponentConfig.setWatchdogResetPortWhenHostDownMode(resetPortWhenHostDownMode);
+				break;
+			case WATCHDOG_MODE_IP_MASTER_SLAVE_PORT:
+				WatchdogIPMasterSlavePort watchdogIPMasterSlavePort = WatchdogIPMasterSlavePort.getByUIName(value);
+				powerPortComponentConfig.setWatchdogIPMasterSlavePort(watchdogIPMasterSlavePort);
+				break;
+			case WATCHDOG_PING_TYPE:
+				WatchdogPingType pingType = WatchdogPingType.getByUIName(value);
+				powerPortComponentConfig.setWatchdogPingType(pingType);
+				break;
+			case WATCHDOG_TCP_PORT:
+				valueInInt = powerPortComponentConfig.getWatchDogPort();
+				try {
+					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCHDOG_TCP_PORT_MAX) {
+						valueInInt = DeviceConstant.WATCHDOG_TCP_PORT_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCHDOG_TCP_PORT_MIN) {
+						valueInInt = DeviceConstant.WATCHDOG_TCP_PORT_MIN;
+					}
+				} catch (NumberFormatException e) {
+					if (value.length() > String.valueOf(DeviceConstant.WATCHDOG_TCP_PORT_MAX).length()) {
+						valueInInt = DeviceConstant.WATCHDOG_TCP_PORT_MAX;
+					}
+				}
+				powerPortComponentConfig.setWatchDogPort(valueInInt);
+				break;
+			case WATCHDOG_HOST_NAME:
+				powerPortComponentConfig.setWatchDogHost(value);
+				break;
+			case WATCHDOG_PING_INTERVAL:
+				valueInInt = powerPortComponentConfig.getWatchDogInterval();
+				try {
+					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCHDOG_PING_INTERVAL_MAX) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_INTERVAL_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCHDOG_PING_INTERVAL_MIN) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_INTERVAL_MIN;
+					}
+				} catch (NumberFormatException e) {
+					if (value.length() > String.valueOf(DeviceConstant.WATCHDOG_PING_INTERVAL_MAX).length()) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_INTERVAL_MAX;
+					}
+				}
+				powerPortComponentConfig.setWatchDogInterval(valueInInt);
+				break;
+			case WATCHDOG_PING_RETRIES:
+				valueInInt = powerPortComponentConfig.getWatchDogRetry();
+				try {
+					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCHDOG_PING_RETRIES_MAX) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_RETRIES_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCHDOG_PING_RETRIES_MIN) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_RETRIES_MIN;
+					}
+				} catch (NumberFormatException e) {
+					if (value.length() > String.valueOf(DeviceConstant.WATCHDOG_PING_RETRIES_MAX).length()) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_RETRIES_MAX;
+					}
+				}
+				powerPortComponentConfig.setWatchDogRetry(valueInInt);
+				break;
+			case WATCHDOG_MODE:
+				WatchDogMode watchDogMode = WatchDogMode.getByUIName(value);
+				if (watchDogMode.equals(WatchDogMode.IP_MASTER_SLAVE_PORT) && powerPortComponentConfig.getWatchdogIPMasterSlavePort() == null) {
+					powerPortComponentConfig.setWatchdogIPMasterSlavePort(WatchdogIPMasterSlavePort.HOST_COME_UP);
+				}
+				powerPortComponentConfig.setWatchDogMode(watchDogMode);
+				break;
+			case WATCH_DOG_DELAY_BOOTING_TIME:
+				valueInInt = powerPortComponentConfig.getWatchDogRbx();
+				try {
+					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX) {
+						valueInInt = DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MIN) {
+						valueInInt = DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MIN;
+					}
+				} catch (NumberFormatException e) {
+					if (value.length() > String.valueOf(DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX).length()) {
+						valueInInt = DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX;
+					}
+				}
+				powerPortComponentConfig.setWatchDogRbx(valueInInt);
+				break;
+			case COUNT_PING_REQUEST:
+				OnOffStatus countPingRequest = OnOffStatus.getByAPIName(value);
+				powerPortComponentConfig.setCountPingRequest(countPingRequest);
+				break;
+			case APPLY_CHANGES:
+				try {
+					String request = powerPortComponentConfig.contributePowerPortConfigRequest(String.valueOf(cachedCurrentPowerPortConfigIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
+					DeviceConfigData deviceConfigData = doGetWithRetryOnUnauthorized(request, DeviceConfigData.class, true);
+					if (deviceConfigData != null) {
+						cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();
+					}
+				} catch (Exception e) {
+					throw new IllegalStateException(String.format("Error while config power port %s: %s", cachedCurrentPowerPortConfigIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR, e.getMessage()), e);
+				}
+				isPowerPortConfigEdited = false;
+				isEmergencyDelivery = false;
+				break;
+			case CANCEL_CHANGES:
+				isEmergencyDelivery = false;
+				isPowerPortConfigEdited = false;
+				break;
+			default:
+				throw new IllegalStateException(String.format("Controllable property %s is not supported", controllableProperty));
+		}
+		cachedPowerPortConfig.getPowerPortComponentConfigs().set(cachedCurrentPowerPortConfigIndex, powerPortComponentConfig);
+		populateDeviceConfig(stats, advancedControllableProperties);
+	}
+
+	//--------------------------------------------------------------------------------------------------------------------------------
+	//endregion
+
 	//region populate advanced controllable properties
 	//--------------------------------------------------------------------------------------------------------------------------------
 
@@ -911,7 +1322,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					break;
 				}
 			}
-			stats.put(property.getName(), DeviceConstant.EMPTY);
+			stats.put(property.getName(), String.valueOf(property.getValue()));
 			advancedControllableProperties.add(property);
 		}
 	}
@@ -993,8 +1404,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param value value of monitoring properties
 	 * @return String (none/value)
 	 */
-	private String getDefaultValueForNullData(String value) {
-		return StringUtils.isNullOrEmpty(value) ? DeviceConstant.NONE : value;
+	private String getDefaultValueForNullData(String value, String defaultValue) {
+		return StringUtils.isNullOrEmpty(value) ? defaultValue : value;
 	}
 
 	/**
