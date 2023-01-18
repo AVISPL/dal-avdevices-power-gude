@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.avdevices.power.gude.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;

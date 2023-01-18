@@ -20,7 +20,6 @@ public enum WatchDogMode {
 
 	private final String uiName;
 	private final String apiName;
-
 	private final String status;
 
 	/**

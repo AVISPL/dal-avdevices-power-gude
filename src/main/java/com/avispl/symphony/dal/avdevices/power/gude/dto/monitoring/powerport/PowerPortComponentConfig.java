@@ -4,6 +4,8 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
@@ -29,7 +31,7 @@ public class PowerPortComponentConfig {
 	private WatchdogIPMasterSlavePort watchdogIPMasterSlavePort;
 	private WatchDogMode watchDogMode;
 	private ColdStart coldStart;
-
+	protected final Log logger = LogFactory.getLog(this.getClass());
 	private String newName;
 
 	@JsonAlias()
@@ -38,7 +40,7 @@ public class PowerPortComponentConfig {
 	@JsonAlias("powup")
 	private int powerUp;
 
-	@JsonAlias({"powrestore", "powerem"})
+	@JsonAlias( { "powrestore", "powerem" })
 	private int powerRemember;
 
 	@JsonAlias("stickylogical")
@@ -534,6 +536,7 @@ public class PowerPortComponentConfig {
 				watchDogType += DeviceConstant.SWITCH_OFF_ONCE;
 				break;
 			default:
+				logger.debug(String.format("un supported watchdog mode: %s", watchDogMode));
 				break;
 		}
 		if (watchDog == 1) {
