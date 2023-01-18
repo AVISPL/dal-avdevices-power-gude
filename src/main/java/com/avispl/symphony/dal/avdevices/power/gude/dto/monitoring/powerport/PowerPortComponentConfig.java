@@ -1,28 +1,36 @@
 package com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.powerport;
 
+import java.util.Optional;
+
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogIPMasterSlavePort;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogPingType;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
 
 /**
- * PowerPortConfig
+ * Power port element configuration data
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 14/01/2023
  * @since 1.0.0
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PowerPortComponentConfig {
 
 	private WatchdogPingType watchdogPingType;
 	private OnOffStatus countPingRequest;
 	private WatchdogResetPortWhenHostDownMode watchdogResetPortWhenHostDownMode;
+	private WatchdogIPMasterSlavePort watchdogIPMasterSlavePort;
 	private WatchDogMode watchDogMode;
 	private ColdStart coldStart;
+
+	private String newName;
 
 	@JsonAlias()
 	private String name;
@@ -30,7 +38,7 @@ public class PowerPortComponentConfig {
 	@JsonAlias("powup")
 	private int powerUp;
 
-	@JsonAlias("powrestore")
+	@JsonAlias({"powrestore", "powerem"})
 	private int powerRemember;
 
 	@JsonAlias("stickylogical")
@@ -408,6 +416,45 @@ public class PowerPortComponentConfig {
 		this.powerRemember = powerRemember;
 	}
 
+	/**
+	 * Retrieves {@link #newName}
+	 *
+	 * @return value of {@link #newName}
+	 */
+	public String getNewName() {
+		return newName;
+	}
+
+	/**
+	 * Sets {@link #newName} value
+	 *
+	 * @param newName new value of {@link #newName}
+	 */
+	public void setNewName(String newName) {
+		this.newName = newName;
+	}
+
+	/**
+	 * Retrieves {@link #watchdogIPMasterSlavePort}
+	 *
+	 * @return value of {@link #watchdogIPMasterSlavePort}
+	 */
+	public WatchdogIPMasterSlavePort getWatchdogIPMasterSlavePort() {
+		return watchdogIPMasterSlavePort;
+	}
+
+	/**
+	 * Sets {@link #watchdogIPMasterSlavePort} value
+	 *
+	 * @param watchdogIPMasterSlavePort new value of {@link #watchdogIPMasterSlavePort}
+	 */
+	public void setWatchdogIPMasterSlavePort(WatchdogIPMasterSlavePort watchdogIPMasterSlavePort) {
+		this.watchdogIPMasterSlavePort = watchdogIPMasterSlavePort;
+	}
+
+	/**
+	 * Map watchdog type to local dto base on bitwise operator
+	 */
 	public void mapWatchdogTypeToDTO() {
 		if ((watchDogType & DeviceConstant.WATCHDOG_ICMP) == DeviceConstant.WATCHDOG_ICMP) {
 			watchdogPingType = WatchdogPingType.ICMP;
@@ -419,6 +466,7 @@ public class PowerPortComponentConfig {
 			watchDogMode = WatchDogMode.RESET_PORT_WHEN_HOST_DOWN;
 		}
 		if ((watchDogType & DeviceConstant.INFINITE_WAIT) == DeviceConstant.INFINITE_WAIT) {
+			watchDogMode = WatchDogMode.RESET_PORT_WHEN_HOST_DOWN;
 			watchdogResetPortWhenHostDownMode = WatchdogResetPortWhenHostDownMode.INFINITE_WAIT;
 		}
 		if ((watchDogType & DeviceConstant.REPEAT_RESET) == DeviceConstant.REPEAT_RESET) {
@@ -428,10 +476,12 @@ public class PowerPortComponentConfig {
 			watchDogMode = WatchDogMode.SWITCH_OFF_ONCE;
 		}
 		if ((watchDogType & DeviceConstant.SWITCH_WHEN_HOST_UP) == DeviceConstant.SWITCH_WHEN_HOST_UP) {
-			watchDogMode = WatchDogMode.IP_MASTER_SLAVE_PORT_HOST_COME_UP;
+			watchDogMode = WatchDogMode.IP_MASTER_SLAVE_PORT;
+			watchdogIPMasterSlavePort = WatchdogIPMasterSlavePort.HOST_COME_UP;
 		}
 		if ((watchDogType & DeviceConstant.SWITCH_WHEN_HOST_DOWN) == DeviceConstant.SWITCH_WHEN_HOST_DOWN) {
-			watchDogMode = WatchDogMode.IP_MASTER_SLAVE_PORT_HOST_GOES_DOWN;
+			watchDogMode = WatchDogMode.IP_MASTER_SLAVE_PORT;
+			watchdogIPMasterSlavePort = WatchdogIPMasterSlavePort.HOST_GOES_DOWN;
 		}
 		if ((watchDogType & DeviceConstant.COUNT_PING_REQUESTS) == DeviceConstant.COUNT_PING_REQUESTS) {
 			countPingRequest = OnOffStatus.ON;
@@ -440,38 +490,45 @@ public class PowerPortComponentConfig {
 		}
 
 		coldStart = ColdStart.OFF;
-		if (powerUp == 1) {
+		if (powerUp == Integer.parseInt(ColdStart.ON.getApiName())) {
 			coldStart = ColdStart.ON;
 		}
-		if (powerRemember == 1) {
+		if (powerRemember == Integer.parseInt(ColdStart.REMEMBER_LAST_STATE.getApiName())) {
 			coldStart = ColdStart.REMEMBER_LAST_STATE;
 		}
 	}
+
 
 	/**
 	 * Contribute output control request
 	 *
 	 * @return String request
 	 */
-	public String contributePowerPortConfigRequest() {
+	public String contributePowerPortConfigRequest(String portNumber) {
+		newName = Optional.ofNullable(newName).orElse(name);
 
 		if (watchdogPingType.equals(WatchdogPingType.TCP)) {
 			watchDogType = 1;
 		} else {
 			watchDogType = 0;
 		}
+		if (watchdogResetPortWhenHostDownMode != null && watchdogResetPortWhenHostDownMode == WatchdogResetPortWhenHostDownMode.REPEAT_RESET) {
+			watchDogType += DeviceConstant.REPEAT_RESET;
+		}
+		if (OnOffStatus.ON.equals(countPingRequest)) {
+			watchDogType += DeviceConstant.COUNT_PING_REQUESTS;
+		}
+
 		switch (watchDogMode) {
 			case RESET_PORT_WHEN_HOST_DOWN:
 				watchDogType += DeviceConstant.RESET_PORT_ENABLED;
-				if (watchdogResetPortWhenHostDownMode.equals(WatchdogResetPortWhenHostDownMode.REPEAT_RESET)) {
-					watchDogType += DeviceConstant.REPEAT_RESET;
+				break;
+			case IP_MASTER_SLAVE_PORT:
+				if (watchdogIPMasterSlavePort.equals(WatchdogIPMasterSlavePort.HOST_COME_UP)) {
+					watchDogType += DeviceConstant.SWITCH_WHEN_HOST_UP;
+				} else {
+					watchDogType += DeviceConstant.SWITCH_WHEN_HOST_DOWN;
 				}
-				break;
-			case IP_MASTER_SLAVE_PORT_HOST_COME_UP:
-				watchDogType += DeviceConstant.SWITCH_WHEN_HOST_UP;
-				break;
-			case IP_MASTER_SLAVE_PORT_HOST_GOES_DOWN:
-				watchDogType += DeviceConstant.SWITCH_WHEN_HOST_DOWN;
 				break;
 			case SWITCH_OFF_ONCE:
 				watchDogType += DeviceConstant.SWITCH_OFF_ONCE;
@@ -479,21 +536,49 @@ public class PowerPortComponentConfig {
 			default:
 				break;
 		}
-		return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
-						+ "&name=%s"
-						+ "&powup=%s"
-						+ "&powrem=%s"
-						+ "&idle=%s"
-						+ "&on_again=%s"
-						+ "&reset=%s"
-						+ "&we=%s"
-						+ "&wip=%s"
-						+ "&wt=%s"
-						+ "&wrbx=%s"
-						+ "&wport=%s"
-						+ "&wint=%s"
-						+ "&wret=%s"
-						+ "&wtype=%s", name, powerUp, powerRemember, powerUpDelay, repowerDelay, reset, watchDog, watchDogHost, watchdogPingType, watchDogRbx, watchDogPort, watchDogInterval, watchDogRetry,
-				watchDogType);
+		if (watchDog == 1) {
+			if (watchdogPingType.equals(WatchdogPingType.TCP)) {
+				return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
+								+ "&name=%s"
+								+ "&powup=%s"
+								+ "&powrem=%s"
+								+ "&idle=%s"
+								+ "&on_again=%s"
+								+ "&reset=%s"
+								+ "&we=%s"
+								+ "&wip=%s"
+								+ "&wrbx=%s"
+								+ "&wport=%s"
+								+ "&wint=%s"
+								+ "&wret=%s"
+								+ "&wt=%s", portNumber, newName, powerUp, powerRemember, powerUpDelay, repowerDelay, reset, watchDog, watchDogHost, watchDogRbx, watchDogPort,
+						watchDogInterval,
+						watchDogRetry, watchDogType);
+			} else {
+				return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
+								+ "&name=%s"
+								+ "&powup=%s"
+								+ "&powrem=%s"
+								+ "&idle=%s"
+								+ "&on_again=%s"
+								+ "&reset=%s"
+								+ "&we=%s"
+								+ "&wip=%s"
+								+ "&wrbx=%s"
+								+ "&wint=%s"
+								+ "&wret=%s"
+								+ "&wt=%s", portNumber, newName, powerUp, powerRemember, powerUpDelay, repowerDelay, reset, watchDog, watchDogHost, watchDogRbx, watchDogInterval,
+						watchDogRetry, watchDogType);
+			}
+		} else {
+			return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
+					+ "&name=%s"
+					+ "&powup=%s"
+					+ "&powrem=%s"
+					+ "&idle=%s"
+					+ "&on_again=%s"
+					+ "&reset=%s"
+					+ "&we=%s", portNumber, newName, powerUp, powerRemember, powerUpDelay, repowerDelay, reset, watchDog);
+		}
 	}
 }

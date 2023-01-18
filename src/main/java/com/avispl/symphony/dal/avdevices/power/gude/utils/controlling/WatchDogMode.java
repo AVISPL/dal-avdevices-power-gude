@@ -14,23 +14,26 @@ import java.util.Arrays;
  */
 public enum WatchDogMode {
 
-	RESET_PORT_WHEN_HOST_DOWN("Reset port when host down", "32"),
-	SWITCH_OFF_ONCE("Switch off once when host down", "16"),
-	IP_MASTER_SLAVE_PORT_HOST_COME_UP("Host comes up then switch on, host goes down then switch off", "4"),
-	IP_MASTER_SLAVE_PORT_HOST_GOES_DOWN("Host comes up then switch on, host goes down then switch off", "8");
+	RESET_PORT_WHEN_HOST_DOWN("Reset Port", "32", "Reset port when host down: infinite wait for booting host after reset"),
+	SWITCH_OFF_ONCE("Switch off once ", "16", "Switch off once when host down"),
+	IP_MASTER_SLAVE_PORT("IP Master-Slave port", "8", "IP Master-Slave port: host goes down then switch on, host comes up then switch off");
 
 	private final String uiName;
 	private final String apiName;
+
+	private final String status;
 
 	/**
 	 * Parameterized constructor
 	 *
 	 * @param uiName ui name of watchdog status mode
 	 * @param apiName api name watchdog status mode
+	 * @param status current status of Watchdog mode
 	 */
-	WatchDogMode(String uiName, String apiName) {
+	WatchDogMode(String uiName, String apiName, String status) {
 		this.uiName = uiName;
 		this.apiName = apiName;
+		this.status = status;
 	}
 
 	/**
@@ -49,6 +52,15 @@ public enum WatchDogMode {
 	 */
 	public String getApiName() {
 		return apiName;
+	}
+
+	/**
+	 * Retrieves {@link #status}
+	 *
+	 * @return value of {@link #status}
+	 */
+	public String getStatus() {
+		return status;
 	}
 
 	/**

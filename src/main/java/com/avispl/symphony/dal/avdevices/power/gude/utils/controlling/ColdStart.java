@@ -16,7 +16,7 @@ public enum ColdStart {
 
 	ON("On", "1"),
 	OFF("Off", "0"),
-	REMEMBER_LAST_STATE("Remember last state", "0"),
+	REMEMBER_LAST_STATE("Remember last state", "1"),
 	ERROR("None", "-1");
 
 	private final String uiName;
