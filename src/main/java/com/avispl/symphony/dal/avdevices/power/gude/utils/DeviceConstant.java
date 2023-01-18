@@ -69,6 +69,27 @@ public class DeviceConstant {
 	public static final int SWITCH_WHEN_HOST_UP = 4;
 	public static final int SWITCH_WHEN_HOST_DOWN = 8;
 	public static final int COUNT_PING_REQUESTS = 128;
+	public static final int INITIALIZATION_DELAY_MAX = 9999;
+	public static final int INITIALIZATION_DELAY_MIN = 0;
+	public static final int REPOWER_DELAY_MAX = 9999;
+	public static final int REPOWER_DELAY_MIN = 0;
+
+	public static final int RESET_DURATION_MAX = 9999;
+	public static final int RESET_DURATION_MIN = 0;
+
+	public static final int WATCHDOG_TCP_PORT_MAX = 65535;
+	public static final int WATCHDOG_TCP_PORT_MIN = 1;
+
+	public static final int WATCHDOG_PING_INTERVAL_MAX = 255;
+	public static final int WATCHDOG_PING_INTERVAL_MIN = 1;
+
+	public static final int WATCHDOG_PING_RETRIES_MAX = 255;
+	public static final int WATCHDOG_PING_RETRIES_MIN = 0;
+
+	public static final int WATCH_DOG_DELAY_BOOTING_TIME_MAX = 999;
+	public static final int WATCH_DOG_DELAY_BOOTING_TIME_MIN = 0;
+
+
 
 	/**
 	 * Header representing a server requesting authentication.

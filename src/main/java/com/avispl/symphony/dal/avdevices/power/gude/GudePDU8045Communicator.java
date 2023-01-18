@@ -26,6 +26,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.CollectionUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.security.auth.login.FailedLoginException;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -67,6 +68,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputMode
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WaitingTimeUnit;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogIPMasterSlavePort;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogPingType;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.monitoring.HistoricalProperties;
@@ -206,7 +208,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					login();
 				}
 				retrieveDeviceMonitoringData(stats, advancedControllableProperties);
-				retrieveDeviceConfigData(stats, advancedControllableProperties);
+				if (isConfigManagement) {
+					retrieveDeviceConfigData(stats, advancedControllableProperties);
+				}
 				populateDynamicStats(stats, dynamicStats);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setDynamicStatistics(dynamicStats);
@@ -916,7 +920,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	}
 
 	/**
-	 * populate Device monitoring data
+	 * populate device configuration data
 	 *
 	 * @param stats store all statistics
 	 * @param advancedControllableProperties store all controllable properties
@@ -943,8 +947,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String watchdogPingRetriesLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_PING_RETRIES.getUiName());
 		String watchDogModeLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE.getUiName());
 		String watchdogModeResetPortWhenHostDownLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN.getUiName());
+		String watchdogModeIPSlavePortLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE_IP_MASTER_SLAVE_PORT.getUiName());
 		String countPingRequestLabel = groupName.concat(PowerPortConfigMetric.COUNT_PING_REQUEST.getUiName());
 		String watchdogDelayBootingTimeLabel = groupName.concat(PowerPortConfigMetric.WATCH_DOG_DELAY_BOOTING_TIME.getUiName());
+		String watchdogModeResetPortPreviousChoosingLabel = groupName.concat(PowerPortConfigMetric.WATCHDOG_MODE_STATUS.getUiName());
 		String applyChangesLabel = groupName.concat(PowerPortConfigMetric.APPLY_CHANGES.getUiName());
 		String cancelChanges = groupName.concat(PowerPortConfigMetric.CANCEL_CHANGES.getUiName());
 		String editedLabel = groupName.concat(PowerPortConfigMetric.EDITED.getUiName());
@@ -955,6 +961,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		List<String> pingTypeModes = EnumTypeHandler.getListOfEnumNames(WatchdogPingType.class, WatchdogPingType.ERROR);
 		List<String> watchdogModes = EnumTypeHandler.getListOfEnumNames(WatchDogMode.class);
 		List<String> resetPortWhenHostDownModes = EnumTypeHandler.getListOfEnumNames(WatchdogResetPortWhenHostDownMode.class, WatchdogResetPortWhenHostDownMode.ERROR);
+		List<String> ipMasterSlavePortModes = EnumTypeHandler.getListOfEnumNames(WatchdogIPMasterSlavePort.class, WatchdogIPMasterSlavePort.ERROR);
 		List<String> powerPorts = new ArrayList<>();
 
 		for (int i = DeviceConstant.MIN_PORT; i <= DeviceConstant.MAX_PORT; i++) {
@@ -977,25 +984,36 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			unusedKeys.add(watchdogPingIntervalLabel);
 			unusedKeys.add(watchdogPingRetriesLabel);
 			unusedKeys.add(watchDogModeLabel);
-			unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
 			unusedKeys.add(countPingRequestLabel);
 			unusedKeys.add(watchdogDelayBootingTimeLabel);
+			unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
+			unusedKeys.add(watchdogModeIPSlavePortLabel);
+			unusedKeys.add(watchdogModeResetPortPreviousChoosingLabel);
 		}
-		if (powerPortComponentConfig.getWatchdogResetPortWhenHostDownMode().equals(WatchdogResetPortWhenHostDownMode.INFINITE_WAIT)) {
-			unusedKeys.add(watchdogDelayBootingTimeLabel);
-		}
+
 		switch (powerPortComponentConfig.getWatchDogMode()) {
 			case RESET_PORT_WHEN_HOST_DOWN:
+				if (WatchdogResetPortWhenHostDownMode.INFINITE_WAIT.equals(powerPortComponentConfig.getWatchdogResetPortWhenHostDownMode())) {
+					unusedKeys.add(watchdogDelayBootingTimeLabel);
+				}
+				unusedKeys.add(watchdogModeIPSlavePortLabel);
+				break;
+			case IP_MASTER_SLAVE_PORT:
+				unusedKeys.add(watchdogDelayBootingTimeLabel);
+				unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
+				break;
+			case SWITCH_OFF_ONCE:
+				unusedKeys.add(watchdogDelayBootingTimeLabel);
+				unusedKeys.add(watchdogModeIPSlavePortLabel);
+				unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
 				break;
 			default:
-				unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
-				unusedKeys.add(watchdogDelayBootingTimeLabel);
 				break;
 		}
 		addAdvanceControlProperties(advancedControllableProperties, stats,
 				createDropdown(choosePowerPortLabel, powerPorts, powerPorts.get(cachedCurrentPowerPortConfigIndex)));
 		addAdvanceControlProperties(advancedControllableProperties, stats,
-				createText(portLabel, getDefaultValueForNullData(powerPortComponentConfig.getName(), DeviceConstant.EMPTY)));
+				createText(portLabel, getDefaultValueForNullData(Optional.ofNullable(powerPortComponentConfig.getNewName()).orElse(powerPortComponentConfig.getName()), DeviceConstant.EMPTY)));
 		addAdvanceControlProperties(advancedControllableProperties, stats,
 				createDropdown(coldStartLabel, coldStartModes, powerPortComponentConfig.getColdStart().getUiName()));
 		addAdvanceControlProperties(advancedControllableProperties, stats,
@@ -1020,6 +1038,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				createDropdown(watchDogModeLabel, watchdogModes, powerPortComponentConfig.getWatchDogMode().getUiName()));
 		addAdvanceControlProperties(advancedControllableProperties, stats,
 				createDropdown(watchdogModeResetPortWhenHostDownLabel, resetPortWhenHostDownModes, powerPortComponentConfig.getWatchdogResetPortWhenHostDownMode().getUiName()));
+		if (powerPortComponentConfig.getWatchDogMode().equals(WatchDogMode.IP_MASTER_SLAVE_PORT)) {
+			addAdvanceControlProperties(advancedControllableProperties, stats,
+					createDropdown(watchdogModeIPSlavePortLabel, ipMasterSlavePortModes, powerPortComponentConfig.getWatchdogIPMasterSlavePort().getUiName()));
+		}
 		addAdvanceControlProperties(advancedControllableProperties, stats,
 				createNumeric(watchdogDelayBootingTimeLabel, getDefaultValueForNullData(String.valueOf(powerPortComponentConfig.getWatchDogRbx()), DeviceConstant.EMPTY)));
 		addAdvanceControlProperties(advancedControllableProperties, stats,
@@ -1028,7 +1050,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		addAdvanceControlProperties(advancedControllableProperties, stats, createButton(cancelChanges, DeviceConstant.CANCEL, DeviceConstant.CANCELING));
 		stats.put(editedLabel, toPascalCase(String.valueOf(isPowerPortConfigEdited)));
 		removeUnusedStatsAndControls(stats, advancedControllableProperties, unusedKeys);
-
 	}
 
 	/**
@@ -1052,7 +1073,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				isPowerPortConfigEdited = false;
 				break;
 			case CUSTOM_LABEL:
-				powerPortComponentConfig.setName(value);
+				powerPortComponentConfig.setNewName(value);
 				break;
 			case INITIALIZATION_STATUS:
 				ColdStart coldStart = ColdStart.getByUIName(value);
@@ -1060,9 +1081,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					case ON:
 					case OFF:
 						powerPortComponentConfig.setPowerUp(Integer.parseInt(coldStart.getApiName()));
+						powerPortComponentConfig.setPowerRemember(Integer.parseInt(ColdStart.OFF.getApiName()));
 						break;
 					case REMEMBER_LAST_STATE:
 						powerPortComponentConfig.setPowerRemember(Integer.parseInt(coldStart.getApiName()));
+						powerPortComponentConfig.setPowerUp(Integer.parseInt(ColdStart.OFF.getApiName()));
 						break;
 					default:
 						logger.error(String.format("Cold Start %s is not supported", value));
@@ -1074,9 +1097,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				int valueInInt = powerPortComponentConfig.getPowerUpDelay();
 				try {
 					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.INITIALIZATION_DELAY_MAX) {
+						valueInInt = DeviceConstant.INITIALIZATION_DELAY_MAX;
+					}
+					if (valueInInt < DeviceConstant.INITIALIZATION_DELAY_MIN) {
+						valueInInt = DeviceConstant.INITIALIZATION_DELAY_MIN;
+					}
 				} catch (NumberFormatException e) {
-					if (value.length() > 4) {
-						valueInInt = 9999;
+					if (value.length() > String.valueOf(DeviceConstant.INITIALIZATION_DELAY_MAX).length()) {
+						valueInInt = DeviceConstant.INITIALIZATION_DELAY_MAX;
 					}
 				}
 				powerPortComponentConfig.setPowerUpDelay(valueInInt);
@@ -1085,9 +1114,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				valueInInt = powerPortComponentConfig.getRepowerDelay();
 				try {
 					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.REPOWER_DELAY_MAX) {
+						valueInInt = DeviceConstant.REPOWER_DELAY_MAX;
+					}
+					if (valueInInt < DeviceConstant.REPOWER_DELAY_MIN) {
+						valueInInt = DeviceConstant.REPOWER_DELAY_MIN;
+					}
 				} catch (NumberFormatException e) {
-					if (value.length() > 4) {
-						valueInInt = 9999;
+					if (value.length() > String.valueOf(DeviceConstant.REPOWER_DELAY_MAX).length()) {
+						valueInInt = DeviceConstant.REPOWER_DELAY_MAX;
 					}
 				}
 				powerPortComponentConfig.setRepowerDelay(valueInInt);
@@ -1096,9 +1131,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				valueInInt = powerPortComponentConfig.getReset();
 				try {
 					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.RESET_DURATION_MAX) {
+						valueInInt = DeviceConstant.RESET_DURATION_MAX;
+					}
+					if (valueInInt < DeviceConstant.RESET_DURATION_MIN) {
+						valueInInt = DeviceConstant.RESET_DURATION_MIN;
+					}
 				} catch (NumberFormatException e) {
-					if (value.length() > 4) {
-						valueInInt = 9999;
+					if (value.length() > String.valueOf(DeviceConstant.RESET_DURATION_MAX).length()) {
+						valueInInt = DeviceConstant.RESET_DURATION_MAX;
 					}
 				}
 				powerPortComponentConfig.setReset(valueInInt);
@@ -1106,6 +1147,14 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			case WATCHDOG:
 				OnOffStatus watchDog = OnOffStatus.getByAPIName(value);
 				powerPortComponentConfig.setWatchDog(Integer.parseInt(watchDog.getApiName()));
+				break;
+			case WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN:
+				WatchdogResetPortWhenHostDownMode resetPortWhenHostDownMode = WatchdogResetPortWhenHostDownMode.getByUIName(value);
+				powerPortComponentConfig.setWatchdogResetPortWhenHostDownMode(resetPortWhenHostDownMode);
+				break;
+			case WATCHDOG_MODE_IP_MASTER_SLAVE_PORT:
+				WatchdogIPMasterSlavePort watchdogIPMasterSlavePort = WatchdogIPMasterSlavePort.getByUIName(value);
+				powerPortComponentConfig.setWatchdogIPMasterSlavePort(watchdogIPMasterSlavePort);
 				break;
 			case WATCHDOG_PING_TYPE:
 				WatchdogPingType pingType = WatchdogPingType.getByUIName(value);
@@ -1115,9 +1164,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				valueInInt = powerPortComponentConfig.getWatchDogPort();
 				try {
 					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCHDOG_TCP_PORT_MAX) {
+						valueInInt = DeviceConstant.WATCHDOG_TCP_PORT_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCHDOG_TCP_PORT_MIN) {
+						valueInInt = DeviceConstant.WATCHDOG_TCP_PORT_MIN;
+					}
 				} catch (NumberFormatException e) {
-					if (value.length() > 5) {
-						valueInInt = 99999;
+					if (value.length() > String.valueOf(DeviceConstant.WATCHDOG_TCP_PORT_MAX).length()) {
+						valueInInt = DeviceConstant.WATCHDOG_TCP_PORT_MAX;
 					}
 				}
 				powerPortComponentConfig.setWatchDogPort(valueInInt);
@@ -1129,9 +1184,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				valueInInt = powerPortComponentConfig.getWatchDogInterval();
 				try {
 					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCHDOG_PING_INTERVAL_MAX) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_INTERVAL_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCHDOG_PING_INTERVAL_MIN) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_INTERVAL_MIN;
+					}
 				} catch (NumberFormatException e) {
-					if (value.length() > 5) {
-						valueInInt = 99999;
+					if (value.length() > String.valueOf(DeviceConstant.WATCHDOG_PING_INTERVAL_MAX).length()) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_INTERVAL_MAX;
 					}
 				}
 				powerPortComponentConfig.setWatchDogInterval(valueInInt);
@@ -1140,28 +1201,39 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				valueInInt = powerPortComponentConfig.getWatchDogRetry();
 				try {
 					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCHDOG_PING_RETRIES_MAX) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_RETRIES_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCHDOG_PING_RETRIES_MIN) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_RETRIES_MIN;
+					}
 				} catch (NumberFormatException e) {
-					if (value.length() > 5) {
-						valueInInt = 99999;
+					if (value.length() > String.valueOf(DeviceConstant.WATCHDOG_PING_RETRIES_MAX).length()) {
+						valueInInt = DeviceConstant.WATCHDOG_PING_RETRIES_MAX;
 					}
 				}
 				powerPortComponentConfig.setWatchDogRetry(valueInInt);
 				break;
 			case WATCHDOG_MODE:
 				WatchDogMode watchDogMode = WatchDogMode.getByUIName(value);
+				if (watchDogMode.equals(WatchDogMode.IP_MASTER_SLAVE_PORT) && powerPortComponentConfig.getWatchdogIPMasterSlavePort() == null) {
+					powerPortComponentConfig.setWatchdogIPMasterSlavePort(WatchdogIPMasterSlavePort.HOST_COME_UP);
+				}
 				powerPortComponentConfig.setWatchDogMode(watchDogMode);
-				break;
-			case WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN:
-				WatchdogResetPortWhenHostDownMode resetPortWhenHostDownMode = WatchdogResetPortWhenHostDownMode.getByUIName(value);
-				powerPortComponentConfig.setWatchdogResetPortWhenHostDownMode(resetPortWhenHostDownMode);
 				break;
 			case WATCH_DOG_DELAY_BOOTING_TIME:
 				valueInInt = powerPortComponentConfig.getWatchDogRbx();
 				try {
 					valueInInt = Integer.parseInt(value);
+					if (valueInInt > DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX) {
+						valueInInt = DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX;
+					}
+					if (valueInInt < DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MIN) {
+						valueInInt = DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MIN;
+					}
 				} catch (NumberFormatException e) {
-					if (value.length() > 3) {
-						valueInInt = 999;
+					if (value.length() > String.valueOf(DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX).length()) {
+						valueInInt = DeviceConstant.WATCH_DOG_DELAY_BOOTING_TIME_MAX;
 					}
 				}
 				powerPortComponentConfig.setWatchDogRbx(valueInInt);
@@ -1171,6 +1243,17 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				powerPortComponentConfig.setCountPingRequest(countPingRequest);
 				break;
 			case APPLY_CHANGES:
+				try {
+					String request = powerPortComponentConfig.contributePowerPortConfigRequest(String.valueOf(cachedCurrentPowerPortConfigIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
+					DeviceConfigData deviceConfigData = doGetWithRetryOnUnauthorized(request, DeviceConfigData.class, true);
+					if (deviceConfigData != null) {
+						cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();
+					}
+				} catch (Exception e) {
+					throw new IllegalStateException(String.format("Error while config power port %s: %s", cachedCurrentPowerPortConfigIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR, e.getMessage()), e);
+				}
+				isPowerPortConfigEdited = false;
+				isEmergencyDelivery = false;
 				break;
 			case CANCEL_CHANGES:
 				isEmergencyDelivery = false;

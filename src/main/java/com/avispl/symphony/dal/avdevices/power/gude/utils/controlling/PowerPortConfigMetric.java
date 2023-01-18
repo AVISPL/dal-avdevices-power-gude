@@ -6,7 +6,7 @@ package com.avispl.symphony.dal.avdevices.power.gude.utils.controlling;
 import java.util.Arrays;
 
 /**
- * Set of output mode
+ * Set of power port configuration controllable properties
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 12/27/2022
@@ -23,14 +23,16 @@ public enum PowerPortConfigMetric {
 	RESET_DURATION("ResetDuration(s)", "reset"),
 	WATCHDOG("Watchdog", "we"),
 	WATCHDOG_PING_TYPE("WatchdogPingType", "wt"),
-	WATCHDOG_HOST_NAME("WatchdogHostName", "wip"),
-	WATCHDOG_PING_INTERVAL("WatchdogPingInterval", "wint"),
+	WATCHDOG_HOST_NAME("WatchdogPingHostName", "wip"),
+	WATCHDOG_PING_INTERVAL("WatchdogPingInterval(s)", "wint"),
 	WATCHDOG_PING_RETRIES("WatchdogPingRetries", "wret"),
-	WATCHDOG_TCP_PORT("WatchDogTCPPort", "wport"),
-	WATCHDOG_MODE("WatchDogMode", "wtype"),
-	WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN("ResetPortWhenHostDown", ""),
-	WATCH_DOG_DELAY_BOOTING_TIME("WatchDogDelayBootingTime(s)", ""),
-	COUNT_PING_REQUEST("CountPINGRequestsAsUnRepliedWhenEthernetLinkDown", ""),
+	WATCHDOG_TCP_PORT("WatchdogPingTCPPort", "wport"),
+	WATCHDOG_MODE("WatchdogMode", "wtype"),
+	WATCHDOG_MODE_RESET_PORT_WHEN_HOST_DOWN("WatchdogModeResetPort", ""),
+	WATCHDOG_MODE_IP_MASTER_SLAVE_PORT("WatchdogModeIPMasterSlavePort", ""),
+	WATCHDOG_MODE_STATUS("WatchdogModeResetPort", ""),
+	WATCH_DOG_DELAY_BOOTING_TIME("WatchdogModeResetPortPingTimeouts", ""),
+	COUNT_PING_REQUEST("WatchdogPingCountWithEthernetDown", ""),
 	APPLY_CHANGES("ApplyChanges", ""),
 	CANCEL_CHANGES("CancelChanges", ""),
 	EDITED("Edited", ""),

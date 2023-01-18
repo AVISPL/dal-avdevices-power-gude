@@ -4,14 +4,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * PowerPortConfig
+ * Contain list of power port configuration data (ID from 1 to 12)
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 14/01/2023
  * @since 1.0.0
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PowerPortConfig {
 
 	private int powerPortIndex;
