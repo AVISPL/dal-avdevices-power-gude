@@ -52,12 +52,44 @@ public class DeviceConstant {
 	public static final double DEFAULT_FOR_NULL_VALUE = 0f;
 	public static final int MIN_WAITING_TIME = 1;
 	public static final int MAX_WAITING_TIME = 59;
+	public static final int MIN_PORT = 1;
+	public static final int MAX_PORT = 12;
 	public static final int INIT_SWITCH_INDEX = 2;
 	public static final int END_SWITCH_INDEX = 4;
 	public static final int ON_OFF_SWITCH_API_FACTOR = 2;
 	public static final String DEFAULT_WAITING_TIME = "5";
 	public static final int INDEX_TO_ORDINAL_CONVERT_FACTOR = 1;
 	public static final float UNIT_TO_MILLI_CONVERT_FACTOR = 1000f;
+	public static final int WATCHDOG_ICMP = 0;
+	public static final int WATCHDOG_TCP = 1;
+	public static final int RESET_PORT_ENABLED = 32;
+	public static final int INFINITE_WAIT = 0;
+	public static final int REPEAT_RESET = 64;
+	public static final int SWITCH_OFF_ONCE = 16;
+	public static final int SWITCH_WHEN_HOST_UP = 4;
+	public static final int SWITCH_WHEN_HOST_DOWN = 8;
+	public static final int COUNT_PING_REQUESTS = 128;
+	public static final int INITIALIZATION_DELAY_MAX = 9999;
+	public static final int INITIALIZATION_DELAY_MIN = 0;
+	public static final int REPOWER_DELAY_MAX = 9999;
+	public static final int REPOWER_DELAY_MIN = 0;
+
+	public static final int RESET_DURATION_MAX = 9999;
+	public static final int RESET_DURATION_MIN = 0;
+
+	public static final int WATCHDOG_TCP_PORT_MAX = 65535;
+	public static final int WATCHDOG_TCP_PORT_MIN = 1;
+
+	public static final int WATCHDOG_PING_INTERVAL_MAX = 255;
+	public static final int WATCHDOG_PING_INTERVAL_MIN = 1;
+
+	public static final int WATCHDOG_PING_RETRIES_MAX = 255;
+	public static final int WATCHDOG_PING_RETRIES_MIN = 0;
+
+	public static final int WATCH_DOG_DELAY_BOOTING_TIME_MAX = 999;
+	public static final int WATCH_DOG_DELAY_BOOTING_TIME_MIN = 0;
+
+
 
 	/**
 	 * Header representing a server requesting authentication.

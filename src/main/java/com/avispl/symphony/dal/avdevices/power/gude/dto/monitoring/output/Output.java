@@ -8,9 +8,10 @@ import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputMode;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WaitingTimeUnit;
 
 /**
@@ -20,6 +21,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WaitingTim
  * Created on 01/01/2023
  * @since 1.0.0
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Output {
 
 	private String groupName;
@@ -39,9 +41,6 @@ public class Output {
 	@JsonAlias
 	private List<Integer> batch = new ArrayList<>();
 
-	@JsonAlias("wdog")
-	private List<Integer> watchDog = new ArrayList<>();
-
 	/**
 	 * Non-Parameterized constructor
 	 */
@@ -60,7 +59,6 @@ public class Output {
 		this.state = output.getState();
 		this.type = output.getType();
 		this.batch = new ArrayList<>(output.getBatch());
-		this.watchDog = new ArrayList<>(output.getWatchDog());
 	}
 
 	/**
@@ -115,24 +113,6 @@ public class Output {
 	 */
 	public void setType(Integer type) {
 		this.type = type;
-	}
-
-	/**
-	 * Retrieves {@link #watchDog}
-	 *
-	 * @return value of {@link #watchDog}
-	 */
-	public List<Integer> getWatchDog() {
-		return watchDog;
-	}
-
-	/**
-	 * Sets {@link #watchDog} value
-	 *
-	 * @param watchDog new value of {@link #watchDog}
-	 */
-	public void setWatchDog(List<Integer> watchDog) {
-		this.watchDog = watchDog;
 	}
 
 	/**
@@ -253,10 +233,10 @@ public class Output {
 		String port = this.getPortNumber();
 		switch (cachedOutputMode){
 			case ON:
-				String portSwitch = OutputStatus.ON.getApiName();
+				String portSwitch = OnOffStatus.ON.getApiName();
 				return String.format("/statusjsn.js?components=769&cmd=%s&p=%s&s=%s", cmd, port, portSwitch);
 			case OFF:
-				portSwitch = OutputStatus.OFF.getApiName();
+				portSwitch = OnOffStatus.OFF.getApiName();
 				return String.format("/statusjsn.js?components=769&cmd=%s&p=%s&s=%s", cmd, port, portSwitch);
 			case RESET:
 				return String.format("/statusjsn.js?components=769&cmd=%s&p=%s", cmd, port);
