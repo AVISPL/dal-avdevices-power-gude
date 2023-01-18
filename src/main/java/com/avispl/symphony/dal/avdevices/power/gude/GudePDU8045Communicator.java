@@ -108,6 +108,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private List<String> waitingTimeValues = new ArrayList<>();
 
 	/**
+	 * Stored list control value of choose power port controllable property
+	 */
+	private List<String> choosePowerPortValues;
+
+	/**
 	 * Stored supported sensor type code
 	 */
 	private Set<Integer> supportedSensorTypes;
@@ -905,14 +910,18 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_CONFIG);
 		try {
 			DeviceConfigData deviceConfigData = doGetWithRetryOnUnauthorized(request, DeviceConfigData.class, true);
-			if (deviceConfigData != null) {
-				if (!isPowerPortConfigEdited) {
-					cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();
-				}
-				populateDeviceConfig(stats, advancedControllableProperties);
-			} else {
+			if (deviceConfigData == null) {
 				throw new ResourceNotReachableException("Error while retrieving device configuration data: response data is empty");
 			}
+			if (!isPowerPortConfigEdited) {
+				cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();
+			}
+			List<PowerPortComponentConfig> powerPorts = deviceConfigData.getPowerPortConfig().getPowerPortComponentConfigs();
+			choosePowerPortValues = new ArrayList<>();
+			for (int i = DeviceConstant.MIN_PORT; i <= DeviceConstant.MAX_PORT; i++) {
+				choosePowerPortValues.add(i + DeviceConstant.COLON + powerPorts.get(i - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR).getName());
+			}
+			populateDeviceConfig(stats, advancedControllableProperties);
 		} catch (Exception e) {
 			throw new ResourceNotReachableException(String.format("Error while retrieving device configuration data: %s", e.getMessage()), e);
 		}
@@ -961,11 +970,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		List<String> watchdogModes = EnumTypeHandler.getListOfEnumNames(WatchDogMode.class);
 		List<String> resetPortWhenHostDownModes = EnumTypeHandler.getListOfEnumNames(WatchdogResetPortWhenHostDownMode.class, WatchdogResetPortWhenHostDownMode.ERROR);
 		List<String> ipMasterSlavePortModes = EnumTypeHandler.getListOfEnumNames(WatchdogIPMasterSlavePort.class, WatchdogIPMasterSlavePort.ERROR);
-		List<String> powerPorts = new ArrayList<>();
-
-		for (int i = DeviceConstant.MIN_PORT; i <= DeviceConstant.MAX_PORT; i++) {
-			powerPorts.add(i + DeviceConstant.COLON + cachedPowerPortConfig.getPowerPortComponentConfigs().get(i - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR).getName());
-		}
 
 		Set<String> unusedKeys = new HashSet<>();
 
@@ -1007,10 +1011,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				unusedKeys.add(watchdogModeResetPortWhenHostDownLabel);
 				break;
 			default:
+				logger.debug(String.format("Unsupported watchdog mode: %s", powerPortComponentConfig.getWatchDogMode()));
 				break;
 		}
 		addAdvanceControlProperties(advancedControllableProperties, stats,
-				createDropdown(choosePowerPortLabel, powerPorts, powerPorts.get(cachedCurrentPowerPortConfigIndex)));
+				createDropdown(choosePowerPortLabel, choosePowerPortValues, choosePowerPortValues.get(cachedCurrentPowerPortConfigIndex)));
 		addAdvanceControlProperties(advancedControllableProperties, stats,
 				createText(portLabel, getDefaultValueForNullData(Optional.ofNullable(powerPortComponentConfig.getNewName()).orElse(powerPortComponentConfig.getName()), DeviceConstant.EMPTY)));
 		addAdvanceControlProperties(advancedControllableProperties, stats,
