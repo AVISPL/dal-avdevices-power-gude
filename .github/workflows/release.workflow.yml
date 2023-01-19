@@ -1,4 +1,4 @@
-dfffname: Java CI
+name: Java CI
 
 on:
   push:
