@@ -193,6 +193,14 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		this.historicalProperties = historicalProperties;
 	}
 
+	/**
+	 * Force adapter to trust all SSL/TLS certificate presented by a remote server
+	 */
+	public GudePDU8045Communicator() {
+		super();
+		this.setTrustAllCertificates(true);
+	}
+
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		if (logger.isDebugEnabled()) {
@@ -425,9 +433,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
 
-		return DeviceConstant.HTTPS
-				+ getHost()
-				+ path;
+		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
 	}
 
 	/**
