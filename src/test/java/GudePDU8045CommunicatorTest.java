@@ -31,9 +31,8 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("172.16.251.101");
-//		communicator.setHost("***REMOVED***");
-		communicator.setPort(80);
+		communicator.setHost("***REMOVED***");
+		communicator.setPort(443);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);
