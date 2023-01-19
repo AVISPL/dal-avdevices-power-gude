@@ -23,7 +23,7 @@ public class DeviceConstant {
 	public static final String COLON = ":";
 	public static final String SPACE = " ";
 	public static final String EMPTY = "";
-	public static final String HTTPS = "http://";
+	public static final String SCHEME_SEPARATOR = "://";
 	public static final String NONE = "None";
 	public static final String ENABLE = "Enable";
 	public static final String DISABLE = "Disable";
@@ -88,7 +88,6 @@ public class DeviceConstant {
 
 	public static final int WATCH_DOG_DELAY_BOOTING_TIME_MAX = 999;
 	public static final int WATCH_DOG_DELAY_BOOTING_TIME_MIN = 0;
-
 
 
 	/**
