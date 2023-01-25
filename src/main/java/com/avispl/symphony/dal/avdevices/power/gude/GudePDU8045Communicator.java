@@ -560,7 +560,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						value = convertSecondToDuration(Long.parseLong(value));
 					}
 					// 2. convert residual current unit from A to mA
-					if (fieldName.equals(SupportedSensorField.RESIDUAL_CURRENT.getUiName())) {
+					if (fieldName.equals(SupportedSensorField.RESIDUAL_CURRENT.getUiName()) || fieldName.equals(SupportedSensorField.CURRENT.getUiName())) {
 						unit = DeviceConstant.MILLI_AMPE_UNIT;
 						value = String.valueOf(sensorFieldValue.getPropertyValue() * DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR);
 					}
