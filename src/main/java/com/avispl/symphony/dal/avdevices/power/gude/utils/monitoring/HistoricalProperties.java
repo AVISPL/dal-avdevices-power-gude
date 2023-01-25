@@ -15,7 +15,7 @@ public enum HistoricalProperties {
 	ACTIVE_POWER("PowerActive(W)"),
 	REACTIVE_POWER("PowerReactive(VAR)"),
 	APPARENT_POWER("PowerApparent(VA)"),
-	CURRENT_POWER("Current(A)"),
+	CURRENT_POWER("Current(mA)"),
 	TEMPERATURE("Temperature(C)"),
 	HUMIDITY("Humidity(%)"),
 	DEW_POINT("DewPoint(C)"),
