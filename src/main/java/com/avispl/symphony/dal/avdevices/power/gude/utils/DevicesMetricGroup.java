@@ -15,7 +15,7 @@ import java.util.Arrays;
 public enum DevicesMetricGroup {
 
 	METER("Meter"),
-	SENSOR("Sensor"),
+	SENSOR("SensorPort"),
 	OUTPUT("PowerPort"),
 	CONTROL("Control"),
 	POWER_PORT_CONFIG("PowerPortConfiguration");

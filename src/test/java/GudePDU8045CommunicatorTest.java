@@ -57,7 +57,7 @@ class GudePDU8045CommunicatorTest {
 		Map<String, String> stats = statistics.getStatistics();
 		ControllableProperty controllableProperty = new ControllableProperty();
 
-		String propertyName = DevicesMetricGroup.SENSOR.getName() + "7106" + DeviceConstant.HASH + "AdvanceMonitoring";
+		String propertyName = DevicesMetricGroup.SENSOR.getName() + "01" + DeviceConstant.HASH + "AdvanceMonitoring";
 		String propertyValue = "1";
 		controllableProperty.setProperty(propertyName);
 		controllableProperty.setValue(propertyValue);

@@ -432,7 +432,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
-
+		if (path.equals(DeviceURL.FIRST_LOGIN)){
+			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
+		}
 		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
 	}
 
@@ -513,9 +515,12 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						cachedMonitoringStatus.getOutputs().get(indexOfSensorProperty).setGroupName(groupName);
 						break;
 					case SENSOR_7106:
-						groupName =
-								DevicesMetricGroup.SENSOR.getName() + properties.get(indexOfSensorProperty).getId().replaceAll(DeviceConstant.SPACE_REGEX, DeviceConstant.EMPTY)
-										+ DeviceConstant.HASH;
+						int sensorOrdinal = DeviceConstant.FIRST_ORDINAL;
+						if (properties.get(indexOfSensorProperty).getRealId() != null){
+							sensorOrdinal = properties.get(indexOfSensorProperty).getRealId() + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
+						}
+
+						groupName = DevicesMetricGroup.SENSOR.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, sensorOrdinal) + DeviceConstant.HASH;
 						break;
 					case METER:
 						groupName = DevicesMetricGroup.METER.getName() + properties.get(indexOfSensorProperty).getId() + DeviceConstant.HASH;
