@@ -12,9 +12,9 @@ import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
-import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
@@ -422,5 +422,28 @@ class GudePDU8045CommunicatorTest {
 		String valueAfterControl = (String) Optional.ofNullable(advancedControllableProperty.getValue()).orElse(DeviceConstant.NONE);
 
 		Assertions.assertEquals(propertyValue, valueAfterControl);
+	}
+
+	/**
+	 * Test GudePDU8045Communicator.GetMultipleStatistics:
+	 *
+	 * Expected: contain valid dynamic statistic values
+	 */
+	@Test
+	void testDynamicStatistic() throws Exception {
+		communicator.setHistoricalProperties("Current(mA), PowerActive(W), PowerReactive(VAR), PowerApparent(VA), Temperature(C), Humidity(%), DewPoint(C)");
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		Map<String, String> dynamicStats = statistics.getDynamicStatistics();
+
+		Assertions.assertNotNull(dynamicStats.get("SensorPort02#DewPoint(C)"));
+		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerActive(W)"));
+		Assertions.assertNotNull(dynamicStats.get("SensorPort01#Humidity(%)"));
+		Assertions.assertNotNull(dynamicStats.get("MeterL1#Current(mA)"));
+		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Humidity(%)"));
+		Assertions.assertNotNull(dynamicStats.get("SensorPort01#DewPoint(C)"));
+		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerReactive(VAR)"));
+		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerApparent(VA)"));
+		Assertions.assertNotNull(dynamicStats.get("SensorPort01#Temperature(C)"));
+		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Temperature(C)"));
 	}
 }
