@@ -20,6 +20,9 @@ public class SensorProperty {
 	@JsonAlias
 	private String id;
 
+	@JsonAlias("real_id")
+	private int realId;
+
 	@JsonAlias
 	private String name;
 
@@ -45,6 +48,24 @@ public class SensorProperty {
 	 */
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	/**
+	 * Retrieves {@link #realId}
+	 *
+	 * @return value of {@link #realId}
+	 */
+	public Integer getRealId() {
+		return realId;
+	}
+
+	/**
+	 * Sets {@link #realId} value
+	 *
+	 * @param realId new value of {@link #realId}
+	 */
+	public void setRealId(int realId) {
+		this.realId = realId;
 	}
 
 	/**
