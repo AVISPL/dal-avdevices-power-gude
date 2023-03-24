@@ -18,11 +18,13 @@ public class DeviceConstant {
 	private DeviceConstant() {
 	}
 
+
 	public static final String HASH = "#";
 	public static final String COMMA = ",";
 	public static final String COLON = ":";
 	public static final String SPACE = " ";
 	public static final String EMPTY = "";
+	public static final String HTTP = "http";
 	public static final String SCHEME_SEPARATOR = "://";
 	public static final String NONE = "None";
 	public static final String ENABLE = "Enable";
@@ -59,6 +61,7 @@ public class DeviceConstant {
 	public static final int ON_OFF_SWITCH_API_FACTOR = 2;
 	public static final String DEFAULT_WAITING_TIME = "5";
 	public static final int INDEX_TO_ORDINAL_CONVERT_FACTOR = 1;
+	public static final int FIRST_ORDINAL = 1;
 	public static final float UNIT_TO_MILLI_CONVERT_FACTOR = 1000f;
 	public static final int WATCHDOG_ICMP = 0;
 	public static final int WATCHDOG_TCP = 1;

@@ -95,8 +95,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 	private List<String> cachedBatch = new ArrayList<>();
 
-	private Map<String, String> cachedFieldsName = new HashMap<>();
-
 	/**
 	 * Stored historical properties from adapter properties
 	 */
@@ -432,7 +430,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
-
+		if (path.equals(DeviceURL.FIRST_LOGIN)) {
+			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
+		}
 		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
 	}
 
@@ -513,9 +513,12 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						cachedMonitoringStatus.getOutputs().get(indexOfSensorProperty).setGroupName(groupName);
 						break;
 					case SENSOR_7106:
-						groupName =
-								DevicesMetricGroup.SENSOR.getName() + properties.get(indexOfSensorProperty).getId().replaceAll(DeviceConstant.SPACE_REGEX, DeviceConstant.EMPTY)
-										+ DeviceConstant.HASH;
+						int sensorOrdinal = DeviceConstant.FIRST_ORDINAL;
+						if (properties.get(indexOfSensorProperty).getRealId() != null) {
+							sensorOrdinal = properties.get(indexOfSensorProperty).getRealId() + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
+						}
+
+						groupName = DevicesMetricGroup.SENSOR.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, sensorOrdinal) + DeviceConstant.HASH;
 						break;
 					case METER:
 						groupName = DevicesMetricGroup.METER.getName() + properties.get(indexOfSensorProperty).getId() + DeviceConstant.HASH;
@@ -579,10 +582,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						propertyName = String.format("%s%s(%s)", groupName, fieldName, unit);
 					}
 					stats.put(propertyName, value);
-
-					if (sensorDescription.getType() == SupportedSensorType.SENSOR_7106.getCode() || sensorDescription.getType() == SupportedSensorType.METER.getCode()) {
-						cachedFieldsName.put(String.format("%s(%s)", fieldName, unit), propertyName);
-					}
 
 					// populate advance monitoring data
 					if (!isContainAdvanceMonitoringData && isAdvanceMonitoringGroups.get(groupName)) {
@@ -682,17 +681,37 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private void populateDynamicStats(Map<String, String> stats, Map<String, String> dynamicStats) {
 		for (SupportedSensorType supportedSensorType : SupportedSensorType.values()) {
 			if (supportedSensorType.isHistorical()) {
-				String fieldName;
 				Set<String> fields = new HashSet<>();
 				if (StringUtils.isNotNullOrEmpty(getHistoricalProperties())) {
 					fields = convertUserInput(getHistoricalProperties());
 				}
+				String groupName = DeviceConstant.EMPTY;
+				for (SensorDescription sensorDescription : cachedMonitoringStatus.getSensorDescriptions()) {
+					if (sensorDescription.getType() == supportedSensorType.getCode()) {
+						for (SensorProperty property : sensorDescription.getProperties()) {
+							switch (supportedSensorType) {
+								case SENSOR_7106:
+									int sensorOrdinal = DeviceConstant.FIRST_ORDINAL;
+									if (property.getRealId() != null) {
+										sensorOrdinal = property.getRealId() + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
+									}
+									groupName = DevicesMetricGroup.SENSOR.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, sensorOrdinal) + DeviceConstant.HASH;
+									break;
+								case METER:
+									groupName = DevicesMetricGroup.METER.getName() + property.getId() + DeviceConstant.HASH;
+									break;
+								default:
+									// the adapter don't have any action for unsupported sensor type.
+									break;
+							}
 
-				for (HistoricalProperties historicalProperty : HistoricalProperties.values()) {
-					fieldName = historicalProperty.getUiName();
-					if (!fields.isEmpty() && cachedFieldsName.containsKey(fieldName) && fields.contains(fieldName)) {
-						String propertyName = cachedFieldsName.get(fieldName);
-						dynamicStats.put(propertyName, stats.get(propertyName));
+							for (HistoricalProperties historicalProperty : HistoricalProperties.values()) {
+								String fieldName = String.format("%s%s", groupName, historicalProperty.getUiName());
+								if (!fields.isEmpty() && fields.contains(historicalProperty.getUiName()) && stats.containsKey(fieldName)) {
+									dynamicStats.put(fieldName, stats.get(fieldName));
+								}
+							}
+						}
 					}
 				}
 			}
