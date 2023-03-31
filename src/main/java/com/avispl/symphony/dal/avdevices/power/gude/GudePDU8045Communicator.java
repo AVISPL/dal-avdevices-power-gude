@@ -26,6 +26,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.CollectionUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.security.auth.login.FailedLoginException;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -94,6 +95,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private List<Boolean> isOutputsControlEdited = new ArrayList<>();
 
 	private List<String> cachedBatch = new ArrayList<>();
+
+	ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
 	 * Stored historical properties from adapter properties
@@ -373,7 +376,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private <T> T doGetWithRetryOnUnauthorized(String url, Class<T> clazz, boolean retryOnUnauthorized) throws Exception {
 		try {
-			return doGet(url, clazz);
+			String response = doGet(url, String.class);
+			if (clazz==String.class) return (T) response;
+			return objectMapper.readValue(response, clazz);
 		} catch (FailedLoginException e) {
 			if (retryOnUnauthorized) {
 				login();
@@ -447,7 +452,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private void retrieveDeviceMonitoringData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_MONITORING);
 		try {
-			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
+			cachedMonitoringStatus= doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
 			if (cachedMonitoringStatus != null) {
 				populateDeviceMonitoring(stats, advancedControllableProperties);
 			} else {
@@ -749,7 +754,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		Output output = cachedOutputsControl.get(outputIndex);
 		output.setPortNumber(String.valueOf(outputIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
 
-		String powerPortStatusOnDashBoardLabel = output.getGroupName().replaceAll(DeviceConstant.HASH, DeviceConstant.EMPTY).concat(DeviceInfoMetric.STATUS.getName());
+		String powerPortStatusOnDashBoardLabel = buildGroupName(outputIndex + 1).replaceAll(DeviceConstant.HASH, DeviceConstant.EMPTY).concat(DeviceInfoMetric.STATUS.getName());
 		String groupName = DevicesMetricGroup.OUTPUT.getName()
 				.concat(String.format(DeviceConstant.TWO_NUMBER_FORMAT, outputIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR))
 				.concat(DevicesMetricGroup.CONTROL.getName())
@@ -898,9 +903,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private Output performPowerPortControl(Output cachedOutput) {
 		try {
 			String request = buildDeviceFullPath(cachedOutput.contributeOutputControlRequest());
-			doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
+			doGetWithRetryOnUnauthorized(request, String.class, true);
 			DeviceMonitoringData monitoringStatus = doGetWithRetryOnUnauthorized(buildDeviceFullPath(DeviceURL.OUTPUT_DATA), DeviceMonitoringData.class, true);
-
 			if (!cachedOutput.getPortNumber().equals(DeviceConstant.ALL_PORT_NUMBER)) {
 				Output output = Optional.ofNullable(monitoringStatus).map(DeviceMonitoringData::getOutputs)
 						.map(outputs1 -> outputs1.get(Integer.parseInt(cachedOutput.getPortNumber()) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR)).orElse(cachedOutput);
@@ -943,7 +947,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			}
 			List<PowerPortComponentConfig> powerPorts = deviceConfigData.getPowerPortConfig().getPowerPortComponentConfigs();
 			choosePowerPortValues = new ArrayList<>();
-			for (int i = DeviceConstant.MIN_PORT; i <= DeviceConstant.MAX_PORT; i++) {
+			for (int i = DeviceConstant.MIN_PORT; i <= powerPorts.size(); i++) {
 				choosePowerPortValues.add(i + DeviceConstant.COLON + powerPorts.get(i - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR).getName());
 			}
 			populateDeviceConfig(stats, advancedControllableProperties);
@@ -1464,5 +1468,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			logger.error("In valid adapter properties input");
 		}
 		return Collections.emptySet();
+	}
+
+	private String buildGroupName(int index) {
+		String groupName = DevicesMetricGroup.OUTPUT.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, index) + DeviceConstant.HASH;
+		return groupName;
 	}
 }
