@@ -1,5 +1,6 @@
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
+import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
@@ -39,6 +41,7 @@ class GudePDU8045CommunicatorTest {
 		communicator.setConfigManagement("true");
 		communicator.init();
 		communicator.connect();
+		communicator.setConfigCookie("8f514d95fa4178d82cf2f64792ca13c6");
 	}
 
 	@AfterEach()
@@ -446,5 +449,16 @@ class GudePDU8045CommunicatorTest {
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerApparent(VA)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort01#Temperature(C)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Temperature(C)"));
+	}
+
+	@Test
+	void testValue() throws Exception {
+		Statistics statistics = communicator.getMultipleStatistics().get(0);
+		ExtendedStatistics x = (ExtendedStatistics) statistics;
+		Map<String, String> x1 = x.getStatistics();
+		for (Entry<String, String> entry : x1.entrySet()) {
+			if (entry.getKey().contains("PowerPortStatus"))
+				System.out.println(entry.getKey() + " " + entry.getValue());
+		}
 	}
 }
