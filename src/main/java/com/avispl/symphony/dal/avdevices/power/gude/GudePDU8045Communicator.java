@@ -259,10 +259,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				if (isConfigManagement) {
 					retrieveDeviceConfigData(stats, advancedControllableProperties);
 				}
-
-				//delete when done
-				stats.put("cookie", this.configCookie);
-
 				populateDynamicStats(stats, dynamicStats);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setDynamicStatistics(dynamicStats);
@@ -275,6 +271,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		}
 		return Collections.singletonList(localExtendedStatistics);
 	}
+
 
 	@Override
 	public void controlProperty(ControllableProperty controllableProperty) throws Exception {
@@ -386,6 +383,29 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		supportedSensorFields = SupportedSensorField.getSupportedSensorFields();
 		initValueForWaitingTimeValues();
 		isValidConfigManagement();
+
+		// Create a trust manager that trusts all certificates
+		TrustManager[] trustAllCerts = new TrustManager[] {
+				new X509TrustManager() {
+					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+						return null;
+					}
+
+					public void checkClientTrusted(
+							java.security.cert.X509Certificate[] certs, String authType) {
+					}
+
+					public void checkServerTrusted(
+							java.security.cert.X509Certificate[] certs, String authType) {
+					}
+				}
+		};
+
+		// Install the all-trusting trust manager
+		SSLContext sslContext = SSLContext.getInstance(WebClientConstant.SSL_CERTIFICATE);
+		sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+		HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+
 		super.internalInit();
 	}
 
@@ -403,28 +423,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		super.internalDestroy();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String doGet(String uri) throws Exception {
-		// Create a trust manager that trusts all certificates
-		TrustManager[] trustAllCerts = new TrustManager[]{
-				new X509TrustManager() {
-					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-						return null;
-					}
-					public void checkClientTrusted(
-							java.security.cert.X509Certificate[] certs, String authType) {
-					}
-					public void checkServerTrusted(
-							java.security.cert.X509Certificate[] certs, String authType) {
-					}
-				}
-		};
-
-		// Install the all-trusting trust manager
-		SSLContext sc = SSLContext.getInstance("SSL");
-		sc.init(null, trustAllCerts, new java.security.SecureRandom());
-		HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-
 		URL obj = new URL(uri);
 		HttpsURLConnection connection = (HttpsURLConnection) obj.openConnection();
 		connection.setRequestMethod(HttpMethod.GET.name());
@@ -447,8 +450,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		try {
 			int statusCode = connection.getResponseCode();
 
-			BufferedReader in = new BufferedReader(
-					new InputStreamReader(connection.getInputStream()));
+			BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 			String inputLine;
 			StringBuffer response = new StringBuffer();
 			while ((inputLine = in.readLine()) != null) {
@@ -564,10 +566,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private void retrieveDeviceMonitoringData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_MONITORING);
-
-		//delete when done
-		System.out.println("request: " + request);
-
 		try {
 			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
 			if (cachedMonitoringStatus != null) {
@@ -613,7 +611,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param advancedControllableProperties store all controllable properties
 	 * @param sensorPropertiesValue list of sensor properties value
 	 */
-	public void populateSensorData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, List<List<SensorFieldValue>> sensorPropertiesValue,
+	private void populateSensorData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, List<List<SensorFieldValue>> sensorPropertiesValue,
 			SensorDescription sensorDescription) {
 		List<SensorProperty> properties = sensorDescription.getProperties();
 		List<SensorField> fields = sensorDescription.getFields();
@@ -687,13 +685,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					// 2. convert residual current unit from A to mA
 					if (fieldName.equals(SupportedSensorField.RESIDUAL_CURRENT.getUiName()) || fieldName.equals(SupportedSensorField.CURRENT.getUiName())) {
 						unit = DeviceConstant.MILLI_AMPE_UNIT;
-						DecimalFormat df = new DecimalFormat("#.##");
+						DecimalFormat df = new DecimalFormat(DeviceConstant.DECIMAL_FORMAT);
 						df.setRoundingMode(RoundingMode.DOWN);
-
-						//delete when done
-						String propertyName1 = String.format("%s%s", groupName, fieldName);
-						System.out.println("name: " + propertyName1);
-
 						value = String.valueOf(df.format(sensorFieldValue.getPropertyValue() * (double) DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR));
 					}
 					// 3. normalize unit
@@ -738,7 +731,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param stats store all statistics
 	 * @param advancedControllableProperties store all controllable properties
 	 */
-	public void populateDeviceInfo(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
+	private void populateDeviceInfo(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		Misc misc = cachedMonitoringStatus.getMisc();
 		if (misc != null) {
 			stats.put(DeviceInfoMetric.DEVICE_NAME.getName(), misc.getProductName());
@@ -1594,8 +1587,12 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		return Collections.emptySet();
 	}
 
+	/**
+	 * Build group name of port
+	 *
+	 * @param index index of port
+	 */
 	private String buildGroupName(int index) {
-		String groupName = DevicesMetricGroup.OUTPUT.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, index) + DeviceConstant.HASH;
-		return groupName;
+		return DevicesMetricGroup.OUTPUT.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, index) + DeviceConstant.HASH;
 	}
 }
