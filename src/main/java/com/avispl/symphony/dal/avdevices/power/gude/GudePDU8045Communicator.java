@@ -10,7 +10,6 @@ import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createTex
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.RoundingMode;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -36,7 +35,6 @@ import org.springframework.util.CollectionUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.security.auth.login.FailedLoginException;
