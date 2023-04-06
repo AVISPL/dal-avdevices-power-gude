@@ -451,14 +451,4 @@ class GudePDU8045CommunicatorTest {
 		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Temperature(C)"));
 	}
 
-	@Test
-	void testValue() throws Exception {
-		Statistics statistics = communicator.getMultipleStatistics().get(0);
-		ExtendedStatistics x = (ExtendedStatistics) statistics;
-		Map<String, String> x1 = x.getStatistics();
-		for (Entry<String, String> entry : x1.entrySet()) {
-			if (entry.getKey().contains("PowerPortStatus"))
-				System.out.println(entry.getKey() + " " + entry.getValue());
-		}
-	}
 }

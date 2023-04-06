@@ -11,6 +11,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.RoundingMode;
 import java.net.URL;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -391,12 +393,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						return null;
 					}
 
-					public void checkClientTrusted(
-							java.security.cert.X509Certificate[] certs, String authType) {
+					public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
 					}
 
-					public void checkServerTrusted(
-							java.security.cert.X509Certificate[] certs, String authType) {
+					public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
 					}
 				}
 		};
