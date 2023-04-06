@@ -7,6 +7,12 @@ import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createDro
 import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createNumeric;
 import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createText;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.math.RoundingMode;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -17,6 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,6 +34,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.CollectionUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.security.auth.login.FailedLoginException;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -40,6 +52,7 @@ import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
+import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.DeviceConfigData;
@@ -61,6 +74,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.EnumTypeHandler;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorField;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorType;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.WebClientConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputControllingMetric;
@@ -154,6 +168,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private String configManagement;
 
 	/**
+	 * store configCookie adapter properties
+	 */
+	private String configCookie;
+
+	/**
 	 * configManagement in boolean value
 	 */
 	private boolean isConfigManagement;
@@ -195,6 +214,24 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	}
 
 	/**
+	 * Retrieves {@link #configCookie}
+	 *
+	 * @return value of {@link #configCookie}
+	 */
+	public String getConfigCookie() {
+		return configCookie;
+	}
+
+	/**
+	 * Sets {@link #configCookie} value
+	 *
+	 * @param configCookie new value of {@link #configCookie}
+	 */
+	public void setConfigCookie(String configCookie) {
+		this.configCookie = configCookie;
+	}
+
+	/**
 	 * Force adapter to trust all SSL/TLS certificate presented by a remote server
 	 */
 	public GudePDU8045Communicator() {
@@ -224,6 +261,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				if (isConfigManagement) {
 					retrieveDeviceConfigData(stats, advancedControllableProperties);
 				}
+
+				//delete when done
+				stats.put("cookie", this.configCookie);
+
 				populateDynamicStats(stats, dynamicStats);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setDynamicStatistics(dynamicStats);
@@ -335,7 +376,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		return super.putExtraRequestHeaders(httpMethod, uri, headers);
 	}
 
-
 	/**
 	 * {@inheritDoc}
 	 */
@@ -365,6 +405,79 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		super.internalDestroy();
 	}
 
+	@Override
+	public String doGet(String uri) throws Exception {
+		// Create a trust manager that trusts all certificates
+		TrustManager[] trustAllCerts = new TrustManager[]{
+				new X509TrustManager() {
+					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+						return null;
+					}
+					public void checkClientTrusted(
+							java.security.cert.X509Certificate[] certs, String authType) {
+					}
+					public void checkServerTrusted(
+							java.security.cert.X509Certificate[] certs, String authType) {
+					}
+				}
+		};
+
+		// Install the all-trusting trust manager
+		SSLContext sc = SSLContext.getInstance("SSL");
+		sc.init(null, trustAllCerts, new java.security.SecureRandom());
+		HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+
+		URL obj = new URL(uri);
+		HttpsURLConnection connection = (HttpsURLConnection) obj.openConnection();
+		connection.setRequestMethod(HttpMethod.GET.name());
+
+		if (StringUtils.isNotNullOrEmpty(this.configCookie)) {
+			connection.setRequestProperty(HttpHeaders.COOKIE, WebClientConstant.COOKIE_FIELD + this.configCookie);
+		}
+		if (StringUtils.isNotNullOrEmpty(this.authorizationHeader)) {
+			connection.setRequestProperty(HttpHeaders.AUTHORIZATION, this.authorizationHeader);
+		}
+
+		connection.setRequestProperty(HttpHeaders.CONTENT_TYPE, WebClientConstant.CONTENT_TYPE);
+		connection.setRequestProperty(HttpHeaders.ACCEPT, WebClientConstant.ACCEPT);
+
+		//add request header
+		connection.setRequestProperty(HttpHeaders.USER_AGENT, HttpHeaders.USER_AGENT);
+		if (this.logger.isDebugEnabled()) {
+			this.logger.debug("Performing a GET operation for " + uri);
+		}
+		try {
+			int statusCode = connection.getResponseCode();
+
+			BufferedReader in = new BufferedReader(
+					new InputStreamReader(connection.getInputStream()));
+			String inputLine;
+			StringBuffer response = new StringBuffer();
+			while ((inputLine = in.readLine()) != null) {
+				response.append(inputLine);
+			}
+			in.close();
+
+			if (!HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
+				if (HttpStatus.UNAUTHORIZED.value() == statusCode) {
+					throw new FailedLoginException("Failed to login, please check the username and password");
+				}
+				if (HttpStatus.BAD_REQUEST.value() == statusCode) {
+					throw new ResourceNotReachableException("Bad request, please check the uri or parameters");
+				}
+				if (HttpStatus.REQUEST_TIMEOUT.value() == statusCode) {
+					throw new TimeoutException("Request time out");
+				}
+				throw new CommandFailureException(getHost(), connection.toString(), response.toString());
+			}
+			if (response != null) {
+				return response.toString();
+			}
+		} finally {
+			connection.disconnect();
+		}
+		return null;
+	}
 
 	/**
 	 * If addressed too frequently, Sembient API may respond with 429 code, meaning that the call rate per second was reached.
@@ -376,8 +489,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private <T> T doGetWithRetryOnUnauthorized(String url, Class<T> clazz, boolean retryOnUnauthorized) throws Exception {
 		try {
-			String response = doGet(url, String.class);
-			if (clazz==String.class) return (T) response;
+			String response = doGet(url);
+			if (clazz == String.class) {
+				return (T) response;
+			}
 			return objectMapper.readValue(response, clazz);
 		} catch (FailedLoginException e) {
 			if (retryOnUnauthorized) {
@@ -451,8 +566,12 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private void retrieveDeviceMonitoringData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_MONITORING);
+
+		//delete when done
+		System.out.println("request: " + request);
+
 		try {
-			cachedMonitoringStatus= doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
+			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
 			if (cachedMonitoringStatus != null) {
 				populateDeviceMonitoring(stats, advancedControllableProperties);
 			} else {
@@ -570,7 +689,14 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					// 2. convert residual current unit from A to mA
 					if (fieldName.equals(SupportedSensorField.RESIDUAL_CURRENT.getUiName()) || fieldName.equals(SupportedSensorField.CURRENT.getUiName())) {
 						unit = DeviceConstant.MILLI_AMPE_UNIT;
-						value = String.valueOf(sensorFieldValue.getPropertyValue() * DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR);
+						DecimalFormat df = new DecimalFormat("#.##");
+						df.setRoundingMode(RoundingMode.DOWN);
+
+						//delete when done
+						String propertyName1 = String.format("%s%s", groupName, fieldName);
+						System.out.println("name: " + propertyName1);
+
+						value = String.valueOf(df.format(sensorFieldValue.getPropertyValue() * (double) DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR));
 					}
 					// 3. normalize unit
 					switch (unit) {
