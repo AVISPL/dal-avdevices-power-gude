@@ -1,6 +1,5 @@
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
-import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
