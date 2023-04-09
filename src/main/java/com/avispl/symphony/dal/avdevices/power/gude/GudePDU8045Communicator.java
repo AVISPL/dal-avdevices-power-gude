@@ -433,12 +433,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		URL obj = new URL(uri);
 
 		HttpsURLConnection.setDefaultSSLSocketFactory(this.sslContext.getSocketFactory());
-		try {
-			HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> hostname.equals(this.getHost()));
-		} catch (Exception e){
-			logger.error(String.format("error while verifying the host name %s, the expected host name is %s",this.getHost(),this.getHost()));
-			throw new Exception(e);
-		}
+		HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> hostname.equals(this.getHost()));
 
 		HttpsURLConnection connection = (HttpsURLConnection) obj.openConnection();
 		connection.setRequestMethod(HttpMethod.GET.name());
