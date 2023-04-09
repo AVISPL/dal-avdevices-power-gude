@@ -156,6 +156,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private int cachedCurrentPowerPortConfigIndex = 0;
 
 	/**
+	 * SSL certificate
+	 */
+	private SSLContext sslContext;
+
+	/**
 	 * ReentrantLock to prevent null pointer exception to localExtendedStatistics when controlProperty method is called before GetMultipleStatistics method.
 	 */
 	private final ReentrantLock reentrantLock = new ReentrantLock();
@@ -388,7 +393,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		TrustManager[] trustAllCerts = new TrustManager[] {
 				new X509TrustManager() {
 					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-						return null;
+						return new java.security.cert.X509Certificate[]{};
 					}
 
 					public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
@@ -400,9 +405,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		};
 
 		// Install the all-trusting trust manager
-		SSLContext sslContext = SSLContext.getInstance(WebClientConstant.SSL_CERTIFICATE);
-		sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-		HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+		this.sslContext = SSLContext.getInstance(WebClientConstant.SSL_CERTIFICATE);
+		this.sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
 
 		super.internalInit();
 	}
@@ -427,6 +431,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	@Override
 	public String doGet(String uri) throws Exception {
 		URL obj = new URL(uri);
+
+		HttpsURLConnection.setDefaultSSLSocketFactory(this.sslContext.getSocketFactory());
+		try {
+			HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> hostname.equals(this.getHost()));
+		} catch (Exception e){
+			logger.error(String.format("error while verifying the host name %s, the expected host name is %s",this.getHost(),this.getHost()));
+			throw new Exception(e);
+		}
+
 		HttpsURLConnection connection = (HttpsURLConnection) obj.openConnection();
 		connection.setRequestMethod(HttpMethod.GET.name());
 
@@ -468,6 +481,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				}
 				throw new CommandFailureException(getHost(), connection.toString(), response.toString());
 			}
+
 			if (response != null) {
 				return response.toString();
 			}
@@ -546,7 +560,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param path url of the request
 	 * @return String full path of the device
 	 */
-	private String buildDeviceFullPath(String path) {
+	public String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
 		if (path.equals(DeviceURL.FIRST_LOGIN)) {
 			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
@@ -881,7 +895,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String batchEndSwitchLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_END_SWITCH);
 		String batchWaitingTimeLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME);
 		String batchWaitingTimeUnitLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_UNIT);
-		String batchCountDown = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING);
+		String batchCountDown = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_01);
 		String applyChangesLabel = groupName.concat(OutputControllingMetric.APPLY_CHANGES);
 		String cancelChangesLabel = groupName.concat(OutputControllingMetric.CANCEL_CHANGES);
 		List<String> outputModes = EnumTypeHandler.getListOfEnumNames(OutputMode.class, OutputMode.ERROR);
@@ -919,6 +933,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						unusedKeys.add(batchWaitingTimeUnitLabel);
 						break;
 					case BATCH:
+						if (stats.containsKey(batchCountDown)){
+							stats.put(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05),stats.get(batchCountDown));
+							stats.remove(batchCountDown);
+						}
 						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchInitSwitchLabel, batchSwitchModes, batchInitSwitchValue.getUiName()));
 						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchEndSwitchLabel, batchSwitchModes, batchEndSwitchValue.getUiName()));
 						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchWaitingTimeLabel, waitingTimeValues, waitingTime));
@@ -945,6 +963,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
 			} else {
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT));
+				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05));
 			}
 			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
 			stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName(), DeviceConstant.NONE));
@@ -1393,6 +1412,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			case APPLY_CHANGES:
 				try {
 					String request = powerPortComponentConfig.contributePowerPortConfigRequest(String.valueOf(cachedCurrentPowerPortConfigIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
+					request = buildDeviceFullPath(request.replaceAll(" ", "+"));
 					DeviceConfigData deviceConfigData = doGetWithRetryOnUnauthorized(request, DeviceConfigData.class, true);
 					if (deviceConfigData != null) {
 						cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();

@@ -1,5 +1,6 @@
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
+import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
@@ -18,6 +20,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatu
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
+import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * GudePDU8045Comunicator
@@ -31,7 +34,7 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("8031.demo.gude-systems.com");
+		communicator.setHost("192.168.254.172");
 		communicator.setPort(443);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
@@ -39,7 +42,6 @@ class GudePDU8045CommunicatorTest {
 		communicator.setConfigManagement("true");
 		communicator.init();
 		communicator.connect();
-		communicator.setConfigCookie("8f514d95fa4178d82cf2f64792ca13c6");
 	}
 
 	@AfterEach()
@@ -449,4 +451,25 @@ class GudePDU8045CommunicatorTest {
 		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Temperature(C)"));
 	}
 
+	@Test
+	void testValue() throws Exception {
+		Statistics statistics = communicator.getMultipleStatistics().get(0);
+		ExtendedStatistics x = (ExtendedStatistics) statistics;
+		Map<String, String> x1 = x.getStatistics();
+		for (Entry<String, String> entry : x1.entrySet()) {
+			if (entry.getKey().contains("PowerPortStatus")) {
+				System.out.println(entry.getKey() + " " + entry.getValue());
+			}
+		}
+	}
+
+	@Test
+	void testURI() throws Exception {
+		String url = "/config.json?cmd=3&components=128&p=1&name=Power Port 4&powup=0&powrem=1&idle=0&on_again=0&reset=10&we=0";
+		url = url.replaceAll(" ", "+");
+		System.out.println(url);
+		url = "https://8031.demo.gude-systems.com" + url;
+		System.out.println(url);
+		System.out.println(StringUtils.isNullOrEmpty(communicator.doGet(url)));
+	}
 }
