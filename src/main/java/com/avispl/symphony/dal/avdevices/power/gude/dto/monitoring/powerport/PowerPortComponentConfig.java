@@ -541,7 +541,7 @@ public class PowerPortComponentConfig {
 		}
 		if (watchDog == 1) {
 			if (watchdogPingType.equals(WatchdogPingType.TCP)) {
-				return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
+				return String.format("/config.json?cmd=3&components=128&p=%s"
 								+ "&name=%s"
 								+ "&powup=%s"
 								+ "&powrem=%s"
@@ -558,7 +558,7 @@ public class PowerPortComponentConfig {
 						watchDogInterval,
 						watchDogRetry, watchDogType);
 			} else {
-				return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
+				return String.format("/config.json?cmd=3&components=128&p=%s"
 								+ "&name=%s"
 								+ "&powup=%s"
 								+ "&powrem=%s"
@@ -574,7 +574,7 @@ public class PowerPortComponentConfig {
 						watchDogRetry, watchDogType);
 			}
 		} else {
-			return String.format("/cfgjsn.js?cmd=3&components=128&p=%s"
+			return String.format("/config.json?cmd=3&components=128&p=%s"
 					+ "&name=%s"
 					+ "&powup=%s"
 					+ "&powrem=%s"
