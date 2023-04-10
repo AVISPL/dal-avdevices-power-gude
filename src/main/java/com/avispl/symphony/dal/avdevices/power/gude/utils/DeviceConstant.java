@@ -53,6 +53,7 @@ public class DeviceConstant {
 	public static final String MAX = "Max";
 	public static final String ALL_PORT_NUMBER = "all";
 	public static final double DEFAULT_FOR_NULL_VALUE = 0f;
+	public static final int MAX_NUMBER_OF_OUTPUT = 30;
 	public static final int MIN_WAITING_TIME = 1;
 	public static final int MAX_WAITING_TIME = 59;
 	public static final int MIN_PORT = 1;

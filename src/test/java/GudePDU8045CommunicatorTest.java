@@ -37,12 +37,13 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("8045.demo.gude-systems.com");
+		communicator.setHost("8031.demo.gude-systems.com");
 		communicator.setPort(443);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);
 		communicator.setConfigManagement("true");
+		communicator.setConfigCookie("9b52f385585ec05f4b912a1957389cce");
 		communicator.init();
 		communicator.connect();
 	}
@@ -487,5 +488,32 @@ class GudePDU8045CommunicatorTest {
 		statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
 		stats = statistics.getStatistics();
 		Assertions.assertEquals("On", stats.get("PowerPort01Status"));
+	}
+
+	/**
+	 * Test remove power port when apply cancel change
+	 *
+	 * Expected: power port was removed
+	 */
+	@Test
+	void testPowerPortControl05() throws Exception {
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = statistics.getStatistics();
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String propertyName = "PowerPort01Control" + DeviceConstant.HASH + "00PowerPort";
+		String propertyValue = "Batch";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(propertyValue);
+		communicator.controlProperty(controllableProperty);
+
+		communicator.getMultipleStatistics().get(0);
+		propertyName = "PowerPort01Control" + DeviceConstant.HASH + "CancelChanges";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(1);
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+		stats = statistics.getStatistics();
+		Assertions.assertNull(stats.get("PowerPort01Control#05PowerPortBatchWaitingTimeRemaining"));
 	}
 }
