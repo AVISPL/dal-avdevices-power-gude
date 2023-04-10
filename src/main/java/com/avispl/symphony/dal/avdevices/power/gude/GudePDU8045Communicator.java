@@ -8,6 +8,7 @@ import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createNum
 import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createText;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.RoundingMode;
 import java.net.URL;
@@ -430,63 +431,93 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * Override doGet to put cookie to header
 	 */
 	@Override
 	public String doGet(String uri) throws Exception {
-		URL obj = new URL(uri);
+		URL url = new URL(uri);
+		HttpsURLConnection connection = createHttpsConnection(url);
+		addRequestHeaders(connection);
+		if (logger.isDebugEnabled()) {
+			logger.debug("Performing a GET operation for " + uri);
+		}
+		String response = getResponse(connection);
+		handleResponseStatus(connection.getResponseCode(), response);
+		connection.disconnect();
+		return response;
+	}
 
-		HttpsURLConnection.setDefaultSSLSocketFactory(this.sslContext.getSocketFactory());
-		HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> hostname.equals(this.getHost()));
-
-		HttpsURLConnection connection = (HttpsURLConnection) obj.openConnection();
+	/**
+	 * Create Https Connection trust all SSL certificates
+	 *
+	 * @param url url of the request
+	 * @return Https Connection
+	 * @throws IOException when the connection can not connect
+	 */
+	private HttpsURLConnection createHttpsConnection(URL url) throws IOException {
+		HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
 		connection.setRequestMethod(HttpMethod.GET.name());
+		connection.setSSLSocketFactory(sslContext.getSocketFactory());
+		connection.setHostnameVerifier((hostname, session) -> hostname.equals(getHost()));
+		return connection;
+	}
 
-		if (StringUtils.isNotNullOrEmpty(this.configCookie)) {
-			connection.setRequestProperty(HttpHeaders.COOKIE, WebClientConstant.COOKIE_FIELD + this.configCookie);
+	/**
+	 * Add request headers to connection
+	 *
+	 * @param connection connection need to add request headers
+	 */
+	private void addRequestHeaders(HttpsURLConnection connection) {
+		if (StringUtils.isNotNullOrEmpty(configCookie)) {
+			connection.setRequestProperty(HttpHeaders.COOKIE, WebClientConstant.COOKIE_FIELD + configCookie);
 		}
-		if (StringUtils.isNotNullOrEmpty(this.authorizationHeader)) {
-			connection.setRequestProperty(HttpHeaders.AUTHORIZATION, this.authorizationHeader);
+		if (StringUtils.isNotNullOrEmpty(authorizationHeader)) {
+			connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authorizationHeader);
 		}
-
 		connection.setRequestProperty(HttpHeaders.CONTENT_TYPE, WebClientConstant.CONTENT_TYPE);
 		connection.setRequestProperty(HttpHeaders.ACCEPT, WebClientConstant.ACCEPT);
-
-		//add request header
 		connection.setRequestProperty(HttpHeaders.USER_AGENT, HttpHeaders.USER_AGENT);
-		if (this.logger.isDebugEnabled()) {
-			this.logger.debug("Performing a GET operation for " + uri);
-		}
-		try {
-			int statusCode = connection.getResponseCode();
+	}
 
-			BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+	/**
+	 * Get response of connection
+	 *
+	 * @param connection connection to get response
+	 * @return response of connection
+	 * @throws IOException when can not read response
+	 */
+	private String getResponse(HttpsURLConnection connection) throws IOException {
+		try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+			StringBuilder response = new StringBuilder();
 			String inputLine;
-			StringBuffer response = new StringBuffer();
 			while ((inputLine = in.readLine()) != null) {
 				response.append(inputLine);
 			}
-			in.close();
-
-			if (!HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
-				if (HttpStatus.UNAUTHORIZED.value() == statusCode) {
-					throw new FailedLoginException("Failed to login, please check the username and password");
-				}
-				if (HttpStatus.BAD_REQUEST.value() == statusCode) {
-					throw new ResourceNotReachableException("Bad request, please check the uri or parameters");
-				}
-				if (HttpStatus.REQUEST_TIMEOUT.value() == statusCode) {
-					throw new TimeoutException("Request time out");
-				}
-				throw new CommandFailureException(getHost(), connection.toString(), response.toString());
-			}
-
-			if (response != null) {
-				return response.toString();
-			}
-		} finally {
-			connection.disconnect();
+			return response.toString();
 		}
-		return null;
+	}
+
+	/**
+	 * Handle response status
+	 *
+	 * @param statusCode status code of response
+	 * @param response response of connection
+	 * @throws Exception if status authorize, bad request, request timeout, etc,...
+	 */
+	private void handleResponseStatus(int statusCode, String response) throws Exception {
+		if (!HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
+			if (HttpStatus.UNAUTHORIZED.value() == statusCode) {
+				throw new FailedLoginException("Failed to login, please check the username and password");
+			}
+			if (HttpStatus.BAD_REQUEST.value() == statusCode) {
+				throw new ResourceNotReachableException("Bad request, please check the uri or parameters");
+			}
+			if (HttpStatus.REQUEST_TIMEOUT.value() == statusCode) {
+				throw new TimeoutException("Request time out");
+			}
+			throw new CommandFailureException(getHost(), getHost(), response);
+		}
 	}
 
 	/**
@@ -1623,7 +1654,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * create first value for cachedOutputMode
 	 */
 	private void initValueForCachedOutputMode() {
-			for (int i = 0; i < 30; ++i) {
+		for (int i = 0; i < 30; ++i) {
 			this.cachedOutputMode.add(OutputMode.OFF);
 		}
 	}
