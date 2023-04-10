@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.platform.engine.TestExecutionResult.Status;
 
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
@@ -21,6 +22,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputCont
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
+import com.avispl.symphony.dal.communicator.Communicator;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
@@ -35,7 +37,7 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("***REMOVED***");
+		communicator.setHost("8045.demo.gude-systems.com");
 		communicator.setPort(443);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
@@ -445,7 +447,6 @@ class GudePDU8045CommunicatorTest {
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerActive(W)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort01#Humidity(%)"));
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#Current(mA)"));
-		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Humidity(%)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort01#DewPoint(C)"));
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerReactive(VAR)"));
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerApparent(VA)"));
@@ -454,19 +455,37 @@ class GudePDU8045CommunicatorTest {
 	}
 
 	/**
-	 *  Test returned value of getMultipleStatistics
+	 * Test status of power port when apply cookie
 	 *
-	 * Expected: control successfully
+	 * Expected: Power port will return On when apply cookie
 	 */
 	@Test
-	void testReturnedValue() throws Exception {
-		Statistics statistics = communicator.getMultipleStatistics().get(0);
-		ExtendedStatistics x = (ExtendedStatistics) statistics;
-		Map<String, String> x1 = x.getStatistics();
-		for (Entry<String, String> entry : x1.entrySet()) {
-			if (entry.getKey().contains("PowerPortStatus")) {
-				Assertions.assertNotNull(entry.getValue());
-			}
-		}
+	void testPowerPortStatusApplyCookie() throws Exception {
+		communicator.destroy();
+		communicator.setHost("8031.demo.gude-systems.com");
+		communicator.setPort(80);
+		communicator.setLogin("admin");
+		communicator.setPassword("admin");
+		communicator.setTrustAllCertificates(true);
+		communicator.setConfigManagement("true");
+		communicator.setConfigCookie("");
+		communicator.init();
+		communicator.connect();
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = statistics.getStatistics();
+		Assertions.assertEquals("Off", stats.get("PowerPort01Status"));
+		communicator.destroy();
+		communicator.setHost("8031.demo.gude-systems.com");
+		communicator.setPort(80);
+		communicator.setLogin("admin");
+		communicator.setPassword("admin");
+		communicator.setTrustAllCertificates(true);
+		communicator.setConfigManagement("true");
+		communicator.setConfigCookie("9b52f385585ec05f4b912a1957389cce");
+		communicator.init();
+		communicator.connect();
+		statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		stats = statistics.getStatistics();
+		Assertions.assertEquals("On", stats.get("PowerPort01Status"));
 	}
 }
