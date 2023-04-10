@@ -393,7 +393,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		TrustManager[] trustAllCerts = new TrustManager[] {
 				new X509TrustManager() {
 					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-						return new java.security.cert.X509Certificate[]{};
+						return new java.security.cert.X509Certificate[] {};
 					}
 
 					public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
@@ -928,8 +928,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						unusedKeys.add(batchWaitingTimeUnitLabel);
 						break;
 					case BATCH:
-						if (stats.containsKey(batchCountDown)){
-							stats.put(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05),stats.get(batchCountDown));
+						if (stats.containsKey(batchCountDown)) {
+							stats.put(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05), stats.get(batchCountDown));
 							stats.remove(batchCountDown);
 						}
 						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchInitSwitchLabel, batchSwitchModes, batchInitSwitchValue.getUiName()));
@@ -1407,7 +1407,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			case APPLY_CHANGES:
 				try {
 					String request = powerPortComponentConfig.contributePowerPortConfigRequest(String.valueOf(cachedCurrentPowerPortConfigIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
-					request = buildDeviceFullPath(request.replaceAll(" ", "+"));
+					request = buildDeviceFullPath(request.replaceAll(DeviceConstant.SPACE, DeviceConstant.PLUS));
 					DeviceConfigData deviceConfigData = doGetWithRetryOnUnauthorized(request, DeviceConfigData.class, true);
 					if (deviceConfigData != null) {
 						cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();
