@@ -258,6 +258,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			final Map<String, String> stats = new HashMap<>();
 			final Map<String, String> dynamicStats = new HashMap<>();
 			final List<AdvancedControllableProperty> advancedControllableProperties = new ArrayList<>();
+			initValueForCachedOutputMode();
 			if (!isEmergencyDelivery) {
 				// login for the first time
 				if (StringUtils.isNullOrEmpty(authorizationHeader)) {
@@ -391,7 +392,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		supportedSensorFields = SupportedSensorField.getSupportedSensorFields();
 		initValueForWaitingTimeValues();
 		isValidConfigManagement();
-		initValueForCachedOutputMode();
 
 		// Create a trust manager that trusts all certificates
 		TrustManager[] trustAllCerts = new TrustManager[] {
@@ -426,6 +426,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		if (localExtendedStatistics != null && localExtendedStatistics.getControllableProperties() != null) {
 			localExtendedStatistics.getControllableProperties().clear();
 		}
+		this.cachedOutputMode.clear();
 		super.internalDestroy();
 	}
 
@@ -998,6 +999,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT));
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05));
 			}
+
+			if (!isOutputsControlEdited.get(outputIndex) || !outputMode.equals(OutputMode.BATCH)) {
+				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05));
+			}
+
 			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
 			stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName(), DeviceConstant.NONE));
 			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
@@ -1654,8 +1660,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * create first value for cachedOutputMode
 	 */
 	private void initValueForCachedOutputMode() {
-		for (int i = 0; i < 30; ++i) {
-			this.cachedOutputMode.add(OutputMode.OFF);
+		if (this.cachedOutputMode.isEmpty()) {
+			for (int i = 0; i < DeviceConstant.MAX_NUMBER_OF_OUTPUT; ++i) {
+				this.cachedOutputMode.add(OutputMode.OFF);
+			}
 		}
 	}
 }
