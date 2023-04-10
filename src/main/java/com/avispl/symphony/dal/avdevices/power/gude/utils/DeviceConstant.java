@@ -18,7 +18,7 @@ public class DeviceConstant {
 	private DeviceConstant() {
 	}
 
-
+	public static final String PLUS = "+";
 	public static final String HASH = "#";
 	public static final String COMMA = ",";
 	public static final String COLON = ":";
@@ -42,7 +42,7 @@ public class DeviceConstant {
 	public static final String TWO_NUMBER_FORMAT = "%02d";
 	public static final String DEFAULT_DEC_PRECISION_FORMAT = "%.0f";
 	public static final String SPACE_REGEX = "\\s+";
-	public static final String DECIMAL_FORMAT="#.##";
+	public static final String DECIMAL_FORMAT = "#.##";
 	public static final String HOUR_MINUTE_SECOND_UNIT = "h:m:s";
 	public static final String DEG_C_UNIT = "degC";
 	public static final String CELSIUS_UNIT = "C";
