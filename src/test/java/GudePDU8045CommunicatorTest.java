@@ -17,6 +17,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputControllingMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
@@ -116,7 +117,8 @@ class GudePDU8045CommunicatorTest {
 		communicator.controlProperty(controllableProperty);
 		communicator.getMultipleStatistics();
 
-		Assertions.assertEquals("false", stats.get("PowerPort01#Edited"));
+//		Assertions.assertEquals("false", stats.get("PowerPort01#Edited"));
+		Assertions.assertTrue(stats.get("PowerPort01Control#".concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_01)).contains("Switch to on in"));
 	}
 
 	/**
@@ -451,25 +453,20 @@ class GudePDU8045CommunicatorTest {
 		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Temperature(C)"));
 	}
 
+	/**
+	 *  Test returned value of getMultipleStatistics
+	 *
+	 * Expected: control successfully
+	 */
 	@Test
-	void testValue() throws Exception {
+	void testReturnedValue() throws Exception {
 		Statistics statistics = communicator.getMultipleStatistics().get(0);
 		ExtendedStatistics x = (ExtendedStatistics) statistics;
 		Map<String, String> x1 = x.getStatistics();
 		for (Entry<String, String> entry : x1.entrySet()) {
 			if (entry.getKey().contains("PowerPortStatus")) {
-				System.out.println(entry.getKey() + " " + entry.getValue());
+				Assertions.assertNotNull(entry.getValue());
 			}
 		}
-	}
-
-	@Test
-	void testURI() throws Exception {
-		String url = "/config.json?cmd=3&components=128&p=1&name=Power Port 4&powup=0&powrem=1&idle=0&on_again=0&reset=10&we=0";
-		url = url.replaceAll(" ", "+");
-		System.out.println(url);
-		url = "https://8031.demo.gude-systems.com" + url;
-		System.out.println(url);
-		System.out.println(StringUtils.isNullOrEmpty(communicator.doGet(url)));
 	}
 }

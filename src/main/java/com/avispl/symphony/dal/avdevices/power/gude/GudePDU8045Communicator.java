@@ -108,6 +108,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 
 	private List<String> cachedBatch = new ArrayList<>();
 
+	private List<OutputMode> cachedOutputMode = new ArrayList<>();
+
 	ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
@@ -388,6 +390,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		supportedSensorFields = SupportedSensorField.getSupportedSensorFields();
 		initValueForWaitingTimeValues();
 		isValidConfigManagement();
+		initValueForCachedOutputMode();
 
 		// Create a trust manager that trusts all certificates
 		TrustManager[] trustAllCerts = new TrustManager[] {
@@ -555,7 +558,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param path url of the request
 	 * @return String full path of the device
 	 */
-	public String buildDeviceFullPath(String path) {
+	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
 		if (path.equals(DeviceURL.FIRST_LOGIN)) {
 			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
@@ -909,7 +912,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		}
 		if (batch.get(1) != 0) {
 			String remainingTime = convertSecondToDuration(batch.get(1));
-			stats.put(batchCountDown, String.format("Switch to %s in %s", OnOffStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
+			if (this.cachedOutputMode.get(outputIndex) == OutputMode.RESET) {
+				stats.put(batchCountDown, String.format("Switch to on in %s", remainingTime));
+			} else {
+				stats.put(batchCountDown, String.format("Switch to %s in %s", OnOffStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
+			}
 			powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT);
 			unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
 		}
@@ -1005,6 +1012,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				cachedOutput.setWaitingTimeUnit(waitingTimeUnit);
 				break;
 			case OutputControllingMetric.APPLY_CHANGES:
+				if (cachedOutputMode.size() > outputIndex) {
+					this.cachedOutputMode.set(outputIndex, cachedOutputsControl.get(outputIndex).getOutputMode());
+				}
 				cachedOutput = performPowerPortControl(cachedOutput);
 				cachedMonitoringStatus.getOutputs().set(outputIndex, new Output(cachedOutput));
 				isOutputsControlEdited.set(outputIndex, false);
@@ -1530,7 +1540,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param init init String
 	 * @return String converted string
 	 */
-	public String toPascalCase(final String init) {
+	private String toPascalCase(final String init) {
 		if (init == null) {
 			return null;
 		}
@@ -1607,5 +1617,14 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private String buildGroupName(int index) {
 		return DevicesMetricGroup.OUTPUT.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, index) + DeviceConstant.HASH;
+	}
+
+	/**
+	 * create first value for cachedOutputMode
+	 */
+	private void initValueForCachedOutputMode() {
+			for (int i = 0; i < 30; ++i) {
+			this.cachedOutputMode.add(OutputMode.OFF);
+		}
 	}
 }
