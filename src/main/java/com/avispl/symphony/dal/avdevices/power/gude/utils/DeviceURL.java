@@ -20,7 +20,7 @@ public class DeviceURL {
 
 	public static final String FIRST_LOGIN = "/statusjsn.js?components=2";
 	public static final String DEVICE_MONITORING = "/statusjsn.js?components=8470545";
-	public static final String DEVICE_CONFIG = "/cfgjsn.js?components=128";
+	public static final String DEVICE_CONFIG = "/config.json?components=128";
 	public static final String OUTPUT_DATA = "/statusjsn.js?components=769";
 
 }

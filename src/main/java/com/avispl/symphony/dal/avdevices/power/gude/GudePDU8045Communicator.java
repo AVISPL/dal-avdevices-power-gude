@@ -7,6 +7,12 @@ import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createDro
 import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createNumeric;
 import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createText;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.math.RoundingMode;
+import java.net.URL;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -17,6 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,6 +33,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.CollectionUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.security.auth.login.FailedLoginException;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -39,6 +51,7 @@ import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
+import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.DeviceConfigData;
@@ -60,6 +73,7 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.EnumTypeHandler;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorField;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.SupportedSensorType;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.WebClientConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputControllingMetric;
@@ -94,6 +108,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private List<Boolean> isOutputsControlEdited = new ArrayList<>();
 
 	private List<String> cachedBatch = new ArrayList<>();
+
+	private List<OutputMode> cachedOutputMode = new ArrayList<>();
+
+	ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
 	 * Stored historical properties from adapter properties
@@ -141,6 +159,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private int cachedCurrentPowerPortConfigIndex = 0;
 
 	/**
+	 * SSL certificate
+	 */
+	private SSLContext sslContext;
+
+	/**
 	 * ReentrantLock to prevent null pointer exception to localExtendedStatistics when controlProperty method is called before GetMultipleStatistics method.
 	 */
 	private final ReentrantLock reentrantLock = new ReentrantLock();
@@ -149,6 +172,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * store configManagement adapter properties
 	 */
 	private String configManagement;
+
+	/**
+	 * store configCookie adapter properties
+	 */
+	private String configCookie;
 
 	/**
 	 * configManagement in boolean value
@@ -192,6 +220,24 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	}
 
 	/**
+	 * Retrieves {@link #configCookie}
+	 *
+	 * @return value of {@link #configCookie}
+	 */
+	public String getConfigCookie() {
+		return configCookie;
+	}
+
+	/**
+	 * Sets {@link #configCookie} value
+	 *
+	 * @param configCookie new value of {@link #configCookie}
+	 */
+	public void setConfigCookie(String configCookie) {
+		this.configCookie = configCookie;
+	}
+
+	/**
 	 * Force adapter to trust all SSL/TLS certificate presented by a remote server
 	 */
 	public GudePDU8045Communicator() {
@@ -212,6 +258,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			final Map<String, String> stats = new HashMap<>();
 			final Map<String, String> dynamicStats = new HashMap<>();
 			final List<AdvancedControllableProperty> advancedControllableProperties = new ArrayList<>();
+			initValueForCachedOutputMode();
 			if (!isEmergencyDelivery) {
 				// login for the first time
 				if (StringUtils.isNullOrEmpty(authorizationHeader)) {
@@ -233,6 +280,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		}
 		return Collections.singletonList(localExtendedStatistics);
 	}
+
 
 	@Override
 	public void controlProperty(ControllableProperty controllableProperty) throws Exception {
@@ -332,7 +380,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		return super.putExtraRequestHeaders(httpMethod, uri, headers);
 	}
 
-
 	/**
 	 * {@inheritDoc}
 	 */
@@ -345,6 +392,26 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		supportedSensorFields = SupportedSensorField.getSupportedSensorFields();
 		initValueForWaitingTimeValues();
 		isValidConfigManagement();
+
+		// Create a trust manager that trusts all certificates
+		TrustManager[] trustAllCerts = new TrustManager[] {
+				new X509TrustManager() {
+					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+						return new java.security.cert.X509Certificate[] {};
+					}
+
+					public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+					}
+
+					public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+					}
+				}
+		};
+
+		// Install the all-trusting trust manager
+		this.sslContext = SSLContext.getInstance(WebClientConstant.SSL_CERTIFICATE);
+		this.sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
 		super.internalInit();
 	}
 
@@ -359,9 +426,100 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		if (localExtendedStatistics != null && localExtendedStatistics.getControllableProperties() != null) {
 			localExtendedStatistics.getControllableProperties().clear();
 		}
+		this.cachedOutputMode.clear();
 		super.internalDestroy();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Override doGet to put cookie to header
+	 */
+	@Override
+	public String doGet(String uri) throws Exception {
+		URL url = new URL(uri);
+		HttpsURLConnection connection = createHttpsConnection(url);
+		addRequestHeaders(connection);
+		if (logger.isDebugEnabled()) {
+			logger.debug("Performing a GET operation for " + uri);
+		}
+		String response = getResponse(connection);
+		handleResponseStatus(connection.getResponseCode(), response);
+		connection.disconnect();
+		return response;
+	}
+
+	/**
+	 * Create Https Connection trust all SSL certificates
+	 *
+	 * @param url url of the request
+	 * @return Https Connection
+	 * @throws IOException when the connection can not connect
+	 */
+	private HttpsURLConnection createHttpsConnection(URL url) throws IOException {
+		HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+		connection.setRequestMethod(HttpMethod.GET.name());
+		connection.setSSLSocketFactory(sslContext.getSocketFactory());
+		connection.setHostnameVerifier((hostname, session) -> hostname.equals(getHost()));
+		return connection;
+	}
+
+	/**
+	 * Add request headers to connection
+	 *
+	 * @param connection connection need to add request headers
+	 */
+	private void addRequestHeaders(HttpsURLConnection connection) {
+		if (StringUtils.isNotNullOrEmpty(configCookie)) {
+			connection.setRequestProperty(HttpHeaders.COOKIE, WebClientConstant.COOKIE_FIELD + configCookie);
+		}
+		if (StringUtils.isNotNullOrEmpty(authorizationHeader)) {
+			connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authorizationHeader);
+		}
+		connection.setRequestProperty(HttpHeaders.CONTENT_TYPE, WebClientConstant.CONTENT_TYPE);
+		connection.setRequestProperty(HttpHeaders.ACCEPT, WebClientConstant.ACCEPT);
+		connection.setRequestProperty(HttpHeaders.USER_AGENT, HttpHeaders.USER_AGENT);
+	}
+
+	/**
+	 * Get response of connection
+	 *
+	 * @param connection connection to get response
+	 * @return response of connection
+	 * @throws IOException when can not read response
+	 */
+	private String getResponse(HttpsURLConnection connection) throws IOException {
+		try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+			StringBuilder response = new StringBuilder();
+			String inputLine;
+			while ((inputLine = in.readLine()) != null) {
+				response.append(inputLine);
+			}
+			return response.toString();
+		}
+	}
+
+	/**
+	 * Handle response status
+	 *
+	 * @param statusCode status code of response
+	 * @param response response of connection
+	 * @throws Exception if status authorize, bad request, request timeout, etc,...
+	 */
+	private void handleResponseStatus(int statusCode, String response) throws Exception {
+		if (!HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
+			if (HttpStatus.UNAUTHORIZED.value() == statusCode) {
+				throw new FailedLoginException("Failed to login, please check the username and password");
+			}
+			if (HttpStatus.BAD_REQUEST.value() == statusCode) {
+				throw new ResourceNotReachableException("Bad request, please check the uri or parameters");
+			}
+			if (HttpStatus.REQUEST_TIMEOUT.value() == statusCode) {
+				throw new TimeoutException("Request time out");
+			}
+			throw new CommandFailureException(getHost(), getHost(), response);
+		}
+	}
 
 	/**
 	 * If addressed too frequently, Sembient API may respond with 429 code, meaning that the call rate per second was reached.
@@ -373,7 +531,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private <T> T doGetWithRetryOnUnauthorized(String url, Class<T> clazz, boolean retryOnUnauthorized) throws Exception {
 		try {
-			return doGet(url, clazz);
+			String response = doGet(url);
+			if (clazz == String.class) {
+				return (T) response;
+			}
+			return objectMapper.readValue(response, clazz);
 		} catch (FailedLoginException e) {
 			if (retryOnUnauthorized) {
 				login();
@@ -491,7 +653,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param advancedControllableProperties store all controllable properties
 	 * @param sensorPropertiesValue list of sensor properties value
 	 */
-	public void populateSensorData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, List<List<SensorFieldValue>> sensorPropertiesValue,
+	private void populateSensorData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties, List<List<SensorFieldValue>> sensorPropertiesValue,
 			SensorDescription sensorDescription) {
 		List<SensorProperty> properties = sensorDescription.getProperties();
 		List<SensorField> fields = sensorDescription.getFields();
@@ -565,7 +727,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					// 2. convert residual current unit from A to mA
 					if (fieldName.equals(SupportedSensorField.RESIDUAL_CURRENT.getUiName()) || fieldName.equals(SupportedSensorField.CURRENT.getUiName())) {
 						unit = DeviceConstant.MILLI_AMPE_UNIT;
-						value = String.valueOf(sensorFieldValue.getPropertyValue() * DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR);
+						DecimalFormat df = new DecimalFormat(DeviceConstant.DECIMAL_FORMAT);
+						df.setRoundingMode(RoundingMode.DOWN);
+						value = String.valueOf(df.format(sensorFieldValue.getPropertyValue() * (double) DeviceConstant.UNIT_TO_MILLI_CONVERT_FACTOR));
 					}
 					// 3. normalize unit
 					switch (unit) {
@@ -609,7 +773,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param stats store all statistics
 	 * @param advancedControllableProperties store all controllable properties
 	 */
-	public void populateDeviceInfo(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
+	private void populateDeviceInfo(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
 		Misc misc = cachedMonitoringStatus.getMisc();
 		if (misc != null) {
 			stats.put(DeviceInfoMetric.DEVICE_NAME.getName(), misc.getProductName());
@@ -749,7 +913,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		Output output = cachedOutputsControl.get(outputIndex);
 		output.setPortNumber(String.valueOf(outputIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
 
-		String powerPortStatusOnDashBoardLabel = output.getGroupName().replaceAll(DeviceConstant.HASH, DeviceConstant.EMPTY).concat(DeviceInfoMetric.STATUS.getName());
+		String powerPortStatusOnDashBoardLabel = buildGroupName(outputIndex + 1).replaceAll(DeviceConstant.HASH, DeviceConstant.EMPTY).concat(DeviceInfoMetric.STATUS.getName());
 		String groupName = DevicesMetricGroup.OUTPUT.getName()
 				.concat(String.format(DeviceConstant.TWO_NUMBER_FORMAT, outputIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR))
 				.concat(DevicesMetricGroup.CONTROL.getName())
@@ -761,7 +925,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		String batchEndSwitchLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_END_SWITCH);
 		String batchWaitingTimeLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME);
 		String batchWaitingTimeUnitLabel = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_UNIT);
-		String batchCountDown = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING);
+		String batchCountDown = groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_01);
 		String applyChangesLabel = groupName.concat(OutputControllingMetric.APPLY_CHANGES);
 		String cancelChangesLabel = groupName.concat(OutputControllingMetric.CANCEL_CHANGES);
 		List<String> outputModes = EnumTypeHandler.getListOfEnumNames(OutputMode.class, OutputMode.ERROR);
@@ -780,7 +944,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		}
 		if (batch.get(1) != 0) {
 			String remainingTime = convertSecondToDuration(batch.get(1));
-			stats.put(batchCountDown, String.format("Switch to %s in %s", OnOffStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
+			if (this.cachedOutputMode.get(outputIndex) == OutputMode.RESET) {
+				stats.put(batchCountDown, String.format("Switch to on in %s", remainingTime));
+			} else {
+				stats.put(batchCountDown, String.format("Switch to %s in %s", OnOffStatus.getByAPIName(cachedBatch.get(outputIndex)).getUiName(), remainingTime));
+			}
 			powerPortLabel = groupName.concat(OutputControllingMetric.POWER_PORT);
 			unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
 		}
@@ -799,6 +967,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						unusedKeys.add(batchWaitingTimeUnitLabel);
 						break;
 					case BATCH:
+						if (stats.containsKey(batchCountDown)) {
+							stats.put(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05), stats.get(batchCountDown));
+							stats.remove(batchCountDown);
+						}
 						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchInitSwitchLabel, batchSwitchModes, batchInitSwitchValue.getUiName()));
 						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchEndSwitchLabel, batchSwitchModes, batchEndSwitchValue.getUiName()));
 						addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(batchWaitingTimeLabel, waitingTimeValues, waitingTime));
@@ -825,7 +997,13 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_UN_INDEXED));
 			} else {
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT));
+				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05));
 			}
+
+			if (!isOutputsControlEdited.get(outputIndex) || !outputMode.equals(OutputMode.BATCH)) {
+				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05));
+			}
+
 			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
 			stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName(), DeviceConstant.NONE));
 			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
@@ -871,6 +1049,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				cachedOutput.setWaitingTimeUnit(waitingTimeUnit);
 				break;
 			case OutputControllingMetric.APPLY_CHANGES:
+				if (cachedOutputMode.size() > outputIndex) {
+					this.cachedOutputMode.set(outputIndex, cachedOutputsControl.get(outputIndex).getOutputMode());
+				}
 				cachedOutput = performPowerPortControl(cachedOutput);
 				cachedMonitoringStatus.getOutputs().set(outputIndex, new Output(cachedOutput));
 				isOutputsControlEdited.set(outputIndex, false);
@@ -898,9 +1079,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private Output performPowerPortControl(Output cachedOutput) {
 		try {
 			String request = buildDeviceFullPath(cachedOutput.contributeOutputControlRequest());
-			doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
+			doGetWithRetryOnUnauthorized(request, String.class, true);
 			DeviceMonitoringData monitoringStatus = doGetWithRetryOnUnauthorized(buildDeviceFullPath(DeviceURL.OUTPUT_DATA), DeviceMonitoringData.class, true);
-
 			if (!cachedOutput.getPortNumber().equals(DeviceConstant.ALL_PORT_NUMBER)) {
 				Output output = Optional.ofNullable(monitoringStatus).map(DeviceMonitoringData::getOutputs)
 						.map(outputs1 -> outputs1.get(Integer.parseInt(cachedOutput.getPortNumber()) - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR)).orElse(cachedOutput);
@@ -943,7 +1123,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			}
 			List<PowerPortComponentConfig> powerPorts = deviceConfigData.getPowerPortConfig().getPowerPortComponentConfigs();
 			choosePowerPortValues = new ArrayList<>();
-			for (int i = DeviceConstant.MIN_PORT; i <= DeviceConstant.MAX_PORT; i++) {
+			for (int i = DeviceConstant.MIN_PORT; i <= powerPorts.size(); i++) {
 				choosePowerPortValues.add(i + DeviceConstant.COLON + powerPorts.get(i - DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR).getName());
 			}
 			populateDeviceConfig(stats, advancedControllableProperties);
@@ -1274,6 +1454,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			case APPLY_CHANGES:
 				try {
 					String request = powerPortComponentConfig.contributePowerPortConfigRequest(String.valueOf(cachedCurrentPowerPortConfigIndex + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR));
+					request = buildDeviceFullPath(request.replaceAll(DeviceConstant.SPACE, DeviceConstant.PLUS));
 					DeviceConfigData deviceConfigData = doGetWithRetryOnUnauthorized(request, DeviceConfigData.class, true);
 					if (deviceConfigData != null) {
 						cachedPowerPortConfig = deviceConfigData.getPowerPortConfig();
@@ -1396,7 +1577,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param init init String
 	 * @return String converted string
 	 */
-	public String toPascalCase(final String init) {
+	private String toPascalCase(final String init) {
 		if (init == null) {
 			return null;
 		}
@@ -1464,5 +1645,25 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			logger.error("In valid adapter properties input");
 		}
 		return Collections.emptySet();
+	}
+
+	/**
+	 * Build group name of port
+	 *
+	 * @param index index of port
+	 */
+	private String buildGroupName(int index) {
+		return DevicesMetricGroup.OUTPUT.getName() + String.format(DeviceConstant.TWO_NUMBER_FORMAT, index) + DeviceConstant.HASH;
+	}
+
+	/**
+	 * create first value for cachedOutputMode
+	 */
+	private void initValueForCachedOutputMode() {
+		if (this.cachedOutputMode.isEmpty()) {
+			for (int i = 0; i < DeviceConstant.MAX_NUMBER_OF_OUTPUT; ++i) {
+				this.cachedOutputMode.add(OutputMode.OFF);
+			}
+		}
 	}
 }

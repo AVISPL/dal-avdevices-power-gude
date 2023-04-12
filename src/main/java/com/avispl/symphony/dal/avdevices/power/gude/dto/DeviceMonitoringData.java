@@ -11,7 +11,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.misc.Misc;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.output.Output;
-import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.powerport.PowerPort;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.SensorDescription;
 import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.SensorValue;
 
@@ -25,9 +24,6 @@ import com.avispl.symphony.dal.avdevices.power.gude.dto.monitoring.sensor.Sensor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DeviceMonitoringData {
 
-	@JsonAlias("outputs")
-	private List<PowerPort> powerPort;
-
 	@JsonAlias("sensor_descr")
 	private List<SensorDescription> sensorDescriptions = new ArrayList<>();
 
@@ -39,24 +35,6 @@ public class DeviceMonitoringData {
 
 	@JsonAlias
 	private List<Output> outputs = new ArrayList<>();
-
-	/**
-	 * Retrieves {@link #powerPort}
-	 *
-	 * @return value of {@link #powerPort}
-	 */
-	public List<PowerPort> getPowerPort() {
-		return powerPort;
-	}
-
-	/**
-	 * Sets {@link #powerPort} value
-	 *
-	 * @param powerPort new value of {@link #powerPort}
-	 */
-	public void setPowerPort(List<PowerPort> powerPort) {
-		this.powerPort = powerPort;
-	}
 
 	/**
 	 * Retrieves {@link #sensorDescriptions}

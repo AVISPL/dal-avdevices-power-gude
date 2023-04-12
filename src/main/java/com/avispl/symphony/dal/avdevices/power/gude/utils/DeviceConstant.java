@@ -18,7 +18,7 @@ public class DeviceConstant {
 	private DeviceConstant() {
 	}
 
-
+	public static final String PLUS = "+";
 	public static final String HASH = "#";
 	public static final String COMMA = ",";
 	public static final String COLON = ":";
@@ -42,6 +42,7 @@ public class DeviceConstant {
 	public static final String TWO_NUMBER_FORMAT = "%02d";
 	public static final String DEFAULT_DEC_PRECISION_FORMAT = "%.0f";
 	public static final String SPACE_REGEX = "\\s+";
+	public static final String DECIMAL_FORMAT = "#.##";
 	public static final String HOUR_MINUTE_SECOND_UNIT = "h:m:s";
 	public static final String DEG_C_UNIT = "degC";
 	public static final String CELSIUS_UNIT = "C";
@@ -52,6 +53,7 @@ public class DeviceConstant {
 	public static final String MAX = "Max";
 	public static final String ALL_PORT_NUMBER = "all";
 	public static final double DEFAULT_FOR_NULL_VALUE = 0f;
+	public static final int MAX_NUMBER_OF_OUTPUT = 30;
 	public static final int MIN_WAITING_TIME = 1;
 	public static final int MAX_WAITING_TIME = 59;
 	public static final int MIN_PORT = 1;
