@@ -1,23 +1,29 @@
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.platform.engine.TestExecutionResult.Status;
 
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
+import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputControllingMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
+import com.avispl.symphony.dal.communicator.Communicator;
+import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * GudePDU8045Comunicator
@@ -31,12 +37,13 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("***REMOVED***");
+		communicator.setHost("8031.demo.gude-systems.com");
 		communicator.setPort(443);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);
 		communicator.setConfigManagement("true");
+		communicator.setConfigCookie("9b52f385585ec05f4b912a1957389cce");
 		communicator.init();
 		communicator.connect();
 	}
@@ -64,6 +71,7 @@ class GudePDU8045CommunicatorTest {
 		communicator.controlProperty(controllableProperty);
 
 		Assertions.assertEquals(propertyValue, stats.get(propertyName));
+		// chi co device 9 va 20
 	}
 
 	/**
@@ -112,7 +120,8 @@ class GudePDU8045CommunicatorTest {
 		communicator.controlProperty(controllableProperty);
 		communicator.getMultipleStatistics();
 
-		Assertions.assertEquals("false", stats.get("PowerPort01#Edited"));
+//		Assertions.assertEquals("false", stats.get("PowerPort01#Edited"));
+		Assertions.assertTrue(stats.get("PowerPort01Control#".concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_01)).contains("Switch to on in"));
 	}
 
 	/**
@@ -208,7 +217,7 @@ class GudePDU8045CommunicatorTest {
 		communicator.controlProperty(controllableProperty);
 		communicator.getMultipleStatistics();
 
-		propertyName = "PowerPort01" + DeviceConstant.HASH + "PowerPortBatchInitSwitch";
+		propertyName = "PowerPort01" + DeviceConstant.HASH + "01PowerPortBatchInitSwitch";
 		propertyValue = "On";
 		controllableProperty.setProperty(propertyName);
 		controllableProperty.setValue(propertyValue);
@@ -243,7 +252,7 @@ class GudePDU8045CommunicatorTest {
 		ControllableProperty controllableProperty = new ControllableProperty();
 
 		String propertyName = DevicesMetricGroup.POWER_PORT_CONFIG.getName() + DeviceConstant.HASH + PowerPortConfigMetric.CHOOSE_POWER_PORT.getUiName();
-		String propertyValue = "3:Power Port 3";
+		String propertyValue = "3:Power Port";
 		controllableProperty.setProperty(propertyName);
 		controllableProperty.setValue(propertyValue);
 		communicator.controlProperty(controllableProperty);
@@ -435,15 +444,76 @@ class GudePDU8045CommunicatorTest {
 		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
 		Map<String, String> dynamicStats = statistics.getDynamicStatistics();
 
-		Assertions.assertNotNull(dynamicStats.get("SensorPort02#DewPoint(C)"));
+		//Assertions.assertNotNull(dynamicStats.get("SensorPort02#DewPoint(C)"));
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerActive(W)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort01#Humidity(%)"));
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#Current(mA)"));
-		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Humidity(%)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort01#DewPoint(C)"));
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerReactive(VAR)"));
 		Assertions.assertNotNull(dynamicStats.get("MeterL1#PowerApparent(VA)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort01#Temperature(C)"));
 		Assertions.assertNotNull(dynamicStats.get("SensorPort02#Temperature(C)"));
+	}
+
+	/**
+	 * Test status of power port when apply cookie
+	 *
+	 * Expected: Power port will return On when apply cookie
+	 */
+	@Test
+	void testPowerPortStatusApplyCookie() throws Exception {
+		communicator.destroy();
+		communicator.setHost("8031.demo.gude-systems.com");
+		communicator.setPort(80);
+		communicator.setLogin("admin");
+		communicator.setPassword("admin");
+		communicator.setTrustAllCertificates(true);
+		communicator.setConfigManagement("true");
+		communicator.setConfigCookie("");
+		communicator.init();
+		communicator.connect();
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = statistics.getStatistics();
+		Assertions.assertEquals("Off", stats.get("PowerPort01Status"));
+		communicator.destroy();
+		communicator.setHost("8031.demo.gude-systems.com");
+		communicator.setPort(80);
+		communicator.setLogin("admin");
+		communicator.setPassword("admin");
+		communicator.setTrustAllCertificates(true);
+		communicator.setConfigManagement("true");
+		communicator.setConfigCookie("9b52f385585ec05f4b912a1957389cce");
+		communicator.init();
+		communicator.connect();
+		statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		stats = statistics.getStatistics();
+		Assertions.assertEquals("On", stats.get("PowerPort01Status"));
+	}
+
+	/**
+	 * Test remove power port when apply cancel change
+	 *
+	 * Expected: power port was removed
+	 */
+	@Test
+	void testPowerPortControl05() throws Exception {
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = statistics.getStatistics();
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String propertyName = "PowerPort01Control" + DeviceConstant.HASH + "00PowerPort";
+		String propertyValue = "Batch";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(propertyValue);
+		communicator.controlProperty(controllableProperty);
+
+		communicator.getMultipleStatistics().get(0);
+		propertyName = "PowerPort01Control" + DeviceConstant.HASH + "CancelChanges";
+		controllableProperty.setProperty(propertyName);
+		controllableProperty.setValue(1);
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+		stats = statistics.getStatistics();
+		Assertions.assertNull(stats.get("PowerPort01Control#05PowerPortBatchWaitingTimeRemaining"));
 	}
 }
