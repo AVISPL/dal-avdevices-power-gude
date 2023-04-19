@@ -465,7 +465,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			((HttpsURLConnection) connection).setHostnameVerifier((hostname, session) -> hostname.equals(getHost()));
 		} else {
 			connection = (HttpURLConnection) url.openConnection();
-
 		}
 		connection.setRequestMethod(HttpMethod.GET.name());
 		return connection;
@@ -600,7 +599,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
 		if (path.equals(DeviceURL.FIRST_LOGIN)) {
-			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + DeviceConstant.COLON + this.getPort() + path;
+			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
 		}
 		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + DeviceConstant.COLON + this.getPort() + path;
 	}
