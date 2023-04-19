@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.RoundingMode;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -438,7 +439,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	@Override
 	public String doGet(String uri) throws Exception {
 		URL url = new URL(uri);
-		HttpsURLConnection connection = createHttpsConnection(url);
+		HttpURLConnection connection = createConnection(url);
 		addRequestHeaders(connection);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Performing a GET operation for " + uri);
@@ -450,17 +451,23 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	}
 
 	/**
-	 * Create Https Connection trust all SSL certificates
+	 * Create Https Connection trust all SSL certificates or Http Connection
 	 *
 	 * @param url url of the request
 	 * @return Https Connection
 	 * @throws IOException when the connection can not connect
 	 */
-	private HttpsURLConnection createHttpsConnection(URL url) throws IOException {
-		HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+	private HttpURLConnection createConnection(URL url) throws IOException {
+		HttpURLConnection connection;
+		if (this.getProtocol().equalsIgnoreCase("https")) {
+			connection = (HttpsURLConnection) url.openConnection();
+			((HttpsURLConnection) connection).setSSLSocketFactory(sslContext.getSocketFactory());
+			((HttpsURLConnection) connection).setHostnameVerifier((hostname, session) -> hostname.equals(getHost()));
+		} else {
+			connection = (HttpURLConnection) url.openConnection();
+
+		}
 		connection.setRequestMethod(HttpMethod.GET.name());
-		connection.setSSLSocketFactory(sslContext.getSocketFactory());
-		connection.setHostnameVerifier((hostname, session) -> hostname.equals(getHost()));
 		return connection;
 	}
 
@@ -469,7 +476,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 *
 	 * @param connection connection need to add request headers
 	 */
-	private void addRequestHeaders(HttpsURLConnection connection) {
+	private void addRequestHeaders(HttpURLConnection connection) {
 		if (StringUtils.isNotNullOrEmpty(configCookie)) {
 			connection.setRequestProperty(HttpHeaders.COOKIE, WebClientConstant.COOKIE_FIELD + configCookie);
 		}
@@ -488,7 +495,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @return response of connection
 	 * @throws IOException when can not read response
 	 */
-	private String getResponse(HttpsURLConnection connection) throws IOException {
+	private String getResponse(HttpURLConnection connection) throws IOException {
 		try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
 			StringBuilder response = new StringBuilder();
 			String inputLine;
@@ -593,9 +600,9 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
 		if (path.equals(DeviceURL.FIRST_LOGIN)) {
-			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
+			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + DeviceConstant.COLON + this.getPort() + path;
 		}
-		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
+		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + DeviceConstant.COLON + this.getPort() + path;
 	}
 
 	/**
