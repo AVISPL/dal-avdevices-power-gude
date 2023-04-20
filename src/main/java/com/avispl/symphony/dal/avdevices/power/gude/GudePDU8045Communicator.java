@@ -439,8 +439,8 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		if (logger.isDebugEnabled()) {
 			logger.debug("Performing a GET operation for " + uri);
 		}
+		handleResponseStatus(connection);
 		String response = getResponse(connection);
-		handleResponseStatus(connection.getResponseCode(), response);
 		connection.disconnect();
 		return response;
 	}
@@ -503,11 +503,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	/**
 	 * Handle response status
 	 *
-	 * @param statusCode status code of response
-	 * @param response response of connection
+	 * @param connection connection to get response
 	 * @throws Exception if status authorize, bad request, request timeout, etc,...
 	 */
-	private void handleResponseStatus(int statusCode, String response) throws Exception {
+	private void handleResponseStatus(HttpURLConnection connection) throws Exception {
+		int statusCode = connection.getResponseCode();
 		if (!HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
 			if (HttpStatus.UNAUTHORIZED.value() == statusCode) {
 				throw new FailedLoginException("Failed to login, please check the username and password");
@@ -518,7 +518,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			if (HttpStatus.REQUEST_TIMEOUT.value() == statusCode) {
 				throw new TimeoutException("Request time out");
 			}
-			throw new CommandFailureException(getHost(), getHost(), response);
+			throw new CommandFailureException(getHost(), getHost(), connection.getResponseMessage());
 		}
 	}
 
