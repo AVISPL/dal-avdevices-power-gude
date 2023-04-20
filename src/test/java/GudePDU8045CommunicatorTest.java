@@ -34,8 +34,8 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("8031.demo.gude-systems.com");
-		communicator.setPort(443);
+		communicator.setHost("192.168.254.172");
+		communicator.setPort(80);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);

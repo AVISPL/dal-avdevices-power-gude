@@ -40,11 +40,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.security.auth.login.FailedLoginException;
-import org.apache.http.Header;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.conn.HttpHostConnectException;
 
 import com.avispl.symphony.api.dal.control.Controller;
@@ -557,22 +552,20 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private void login() {
 		try {
-			HttpClient httpClient = this.obtainHttpClient(true);
-			HttpGet httpGet = new HttpGet(buildDeviceFullPath(DeviceURL.FIRST_LOGIN));
-			HttpResponse response = null;
-
-			try {
-				response = httpClient.execute(httpGet);
-			} finally {
-				if (response instanceof CloseableHttpResponse) {
-					((CloseableHttpResponse) response).close();
-				}
+			URL url = new URL(buildDeviceFullPath(DeviceURL.FIRST_LOGIN));
+			HttpURLConnection connection = createConnection(url);
+			addRequestHeaders(connection);
+			if (logger.isDebugEnabled()) {
+				logger.debug("Performing a login operation for " + url);
 			}
+			Map<String, List<String>> headers = connection.getHeaderFields();
+			int statusCode = connection.getResponseCode();
+			connection.disconnect();
 
-			Header header = response.getFirstHeader(DeviceConstant.WWW_AUTHENTICATE);
-			if (header != null) {
-				String headerResponseString = response.getFirstHeader(DeviceConstant.WWW_AUTHENTICATE).toString();
-				if (response.getStatusLine().getStatusCode() == HttpStatus.UNAUTHORIZED.value() && StringUtils.isNotNullOrEmpty(headerResponseString)) {
+			List<String> header = headers.get(DeviceConstant.WWW_AUTHENTICATE);
+			if (header != null && !header.isEmpty()) {
+				String headerResponseString = header.get(0);
+				if (statusCode == HttpStatus.UNAUTHORIZED.value() && StringUtils.isNotNullOrEmpty(headerResponseString)) {
 					AuthorizationChallengeHandler authorizationChallengeHandler = new AuthorizationChallengeHandler(getLogin(), getPassword());
 					List<Map<String, String>> challenges = new ArrayList<>();
 					Map<String, String> challenge = authorizationChallengeHandler.parseAuthenticationOrAuthorizationHeader(headerResponseString);
@@ -598,9 +591,6 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
-		if (path.equals(DeviceURL.FIRST_LOGIN)) {
-			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
-		}
 		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + DeviceConstant.COLON + this.getPort() + path;
 	}
 
