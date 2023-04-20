@@ -1,20 +1,19 @@
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.platform.engine.TestExecutionResult.Status;
 
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
-import com.avispl.symphony.api.dal.dto.monitor.Statistics;
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.avdevices.power.gude.GudePDU8045Communicator;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceConstant;
+import com.avispl.symphony.dal.avdevices.power.gude.utils.DeviceInfoMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.DevicesMetricGroup;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.ColdStart;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OnOffStatus;
@@ -22,8 +21,6 @@ import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.OutputCont
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.PowerPortConfigMetric;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchDogMode;
 import com.avispl.symphony.dal.avdevices.power.gude.utils.controlling.WatchdogResetPortWhenHostDownMode;
-import com.avispl.symphony.dal.communicator.Communicator;
-import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * GudePDU8045Comunicator
@@ -37,13 +34,13 @@ class GudePDU8045CommunicatorTest {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		communicator.setHost("8031.demo.gude-systems.com");
-		communicator.setPort(443);
+		communicator.setHost("***REMOVED***");
+		communicator.setPort(80);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);
 		communicator.setConfigManagement("true");
-		communicator.setConfigCookie("9b52f385585ec05f4b912a1957389cce");
+		communicator.setConfigCookie("***REMOVED***");
 		communicator.init();
 		communicator.connect();
 	}
@@ -462,15 +459,16 @@ class GudePDU8045CommunicatorTest {
 	 */
 	@Test
 	void testPowerPortStatusApplyCookie() throws Exception {
-		communicator.destroy();
-		communicator.setHost("8031.demo.gude-systems.com");
-		communicator.setPort(80);
+		GudePDU8045Communicator communicator = new GudePDU8045Communicator();
+		communicator.setHost("***REMOVED***");
+		communicator.setPort(443);
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);
 		communicator.setConfigManagement("true");
 		communicator.setConfigCookie("");
 		communicator.init();
+		communicator.setPort(443);
 		communicator.connect();
 		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = statistics.getStatistics();
@@ -478,11 +476,12 @@ class GudePDU8045CommunicatorTest {
 		communicator.destroy();
 		communicator.setHost("8031.demo.gude-systems.com");
 		communicator.setPort(80);
+		communicator.setProtocol("http");
 		communicator.setLogin("admin");
 		communicator.setPassword("admin");
 		communicator.setTrustAllCertificates(true);
 		communicator.setConfigManagement("true");
-		communicator.setConfigCookie("9b52f385585ec05f4b912a1957389cce");
+		communicator.setConfigCookie("***REMOVED***");
 		communicator.init();
 		communicator.connect();
 		statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
@@ -515,5 +514,178 @@ class GudePDU8045CommunicatorTest {
 		communicator.getMultipleStatistics();
 		stats = statistics.getStatistics();
 		Assertions.assertNull(stats.get("PowerPort01Control#05PowerPortBatchWaitingTimeRemaining"));
+	}
+
+	/**
+	 * Test all on or all off button
+	 *
+	 * Expected: all ports respond "on" when clicking the "all on" button and off when clicking the "all of" button
+	 */
+	@Test
+	public void testAllOnOrAllOff() throws Exception {
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+
+		ControllableProperty controllableProperty = new ControllableProperty();
+		controllableProperty.setProperty(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_OFF.getName());
+		controllableProperty.setValue("");
+		controllableProperty.setDeviceId("");
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+
+		Thread.sleep(2000);
+		Map<String, String> stats = statistics.getStatistics();
+		for (int i = 1; i < 9; ++i) {
+			Assertions.assertEquals("Off", stats.get(String.format("PowerPort0%sStatus", i)));
+		}
+
+		controllableProperty.setProperty(DeviceInfoMetric.ALL_POWER_PORT_CONTROL_ON.getName());
+		controllableProperty.setValue("");
+		controllableProperty.setDeviceId("");
+		communicator.controlProperty(controllableProperty);
+		communicator.getMultipleStatistics();
+
+		Thread.sleep(2000);
+		for (int i = 1; i < 9; ++i) {
+			Assertions.assertEquals("On", stats.get(String.format("PowerPort0%sStatus", i)));
+		}
+	}
+
+	/**
+	 * Test connection with Http protocol
+	 *
+	 * Expected: It doesn't throw exception
+	 */
+	@Test
+	public void testConnectionWithHttpProtocol() throws Exception {
+		GudePDU8045Communicator gudePDU8045Communicator = new GudePDU8045Communicator();
+		gudePDU8045Communicator.setHost("8031.demo.gude-systems.com");
+		gudePDU8045Communicator.setPort(80);
+		gudePDU8045Communicator.setLogin("admin");
+		gudePDU8045Communicator.setPassword("admin");
+		gudePDU8045Communicator.setTrustAllCertificates(true);
+		gudePDU8045Communicator.setConfigManagement("true");
+		gudePDU8045Communicator.setConfigCookie("***REMOVED***");
+		gudePDU8045Communicator.init();
+		gudePDU8045Communicator.connect();
+		Assertions.assertDoesNotThrow(() -> gudePDU8045Communicator.getMultipleStatistics());
+	}
+
+	/**
+	 * Test connection with Https protocol
+	 *
+	 * Expected: It doesn't throw exception
+	 */
+	@Test
+	public void testConnectionWithHttpsProtocol() throws Exception {
+		GudePDU8045Communicator gudePDU8045Communicator = new GudePDU8045Communicator();
+		gudePDU8045Communicator.setHost("8031.demo.gude-systems.com");
+		gudePDU8045Communicator.setPort(443);
+		gudePDU8045Communicator.setLogin("admin");
+		gudePDU8045Communicator.setPassword("admin");
+		gudePDU8045Communicator.setTrustAllCertificates(true);
+		gudePDU8045Communicator.setConfigManagement("true");
+		gudePDU8045Communicator.setConfigCookie("***REMOVED***");
+		gudePDU8045Communicator.init();
+		gudePDU8045Communicator.connect();
+		Assertions.assertDoesNotThrow(() -> gudePDU8045Communicator.getMultipleStatistics());
+	}
+
+
+	/**
+	 * Test connection with Http protocol
+	 *
+	 * Expected: It will throw ResourceNotReachableException exception
+	 */
+	@Test
+	public void testConnectionWhileSettingWrongPort() throws Exception {
+		GudePDU8045Communicator gudePDU8045Communicator = new GudePDU8045Communicator();
+		gudePDU8045Communicator.setHost("8031.demo.gude-systems.com");
+		gudePDU8045Communicator.setPort(8080);
+		gudePDU8045Communicator.setLogin("admin");
+		gudePDU8045Communicator.setPassword("admin");
+		gudePDU8045Communicator.setTrustAllCertificates(true);
+		gudePDU8045Communicator.setConfigManagement("true");
+		gudePDU8045Communicator.setConfigCookie("***REMOVED***");
+		gudePDU8045Communicator.init();
+		gudePDU8045Communicator.connect();
+		Assertions.assertThrows(ResourceNotReachableException.class, () -> gudePDU8045Communicator.getMultipleStatistics(), "Expect fail here due to using wrong port");
+	}
+
+	/**
+	 * Test real device connection with Http protocol
+	 *
+	 * Expected: It doesn't throw exception
+	 */
+	@Test
+	public void testRealDeviceConnectionWithHttpProtocol() throws Exception {
+		GudePDU8045Communicator gudePDU8045Communicator = new GudePDU8045Communicator();
+		gudePDU8045Communicator.setHost("***REMOVED***");
+		gudePDU8045Communicator.setPort(80);
+		gudePDU8045Communicator.setLogin("admin");
+		gudePDU8045Communicator.setPassword("admin");
+		gudePDU8045Communicator.setTrustAllCertificates(true);
+		gudePDU8045Communicator.setConfigManagement("true");
+		gudePDU8045Communicator.init();
+		gudePDU8045Communicator.connect();
+		Assertions.assertDoesNotThrow(() -> gudePDU8045Communicator.getMultipleStatistics());
+	}
+
+	/**
+	 * Test real device connection with Https protocol
+	 *
+	 * Expected: It doesn't throw exception
+	 */
+	@Test
+	public void testRealDeviceConnectionWithHttpsProtocol() throws Exception {
+		GudePDU8045Communicator gudePDU8045Communicator = new GudePDU8045Communicator();
+		gudePDU8045Communicator.setHost("***REMOVED***");
+		gudePDU8045Communicator.setPort(443);
+		gudePDU8045Communicator.setLogin("admin");
+		gudePDU8045Communicator.setPassword("admin");
+		gudePDU8045Communicator.setTrustAllCertificates(true);
+		gudePDU8045Communicator.setConfigManagement("true");
+		gudePDU8045Communicator.init();
+		gudePDU8045Communicator.connect();
+		Assertions.assertDoesNotThrow(() -> gudePDU8045Communicator.getMultipleStatistics());
+	}
+
+	/**
+	 * Test real device connection with port 80 and Http protocol
+	 *
+	 * Expected: It will throw ResourceNotReachableException exception
+	 */
+	@Test
+	public void testRealDeviceConnectionWithPort80AndHttpsProtocol() throws Exception {
+		GudePDU8045Communicator gudePDU8045Communicator = new GudePDU8045Communicator();
+		gudePDU8045Communicator.setHost("***REMOVED***");
+		gudePDU8045Communicator.setPort(80);
+		gudePDU8045Communicator.setProtocol("https");
+		gudePDU8045Communicator.setLogin("admin");
+		gudePDU8045Communicator.setPassword("admin");
+		gudePDU8045Communicator.setTrustAllCertificates(true);
+		gudePDU8045Communicator.setConfigManagement("true");
+		gudePDU8045Communicator.init();
+		gudePDU8045Communicator.connect();
+		Assertions.assertThrows(ResourceNotReachableException.class, () -> gudePDU8045Communicator.getMultipleStatistics(), "Expect fail here due to port 80 must use the Http protocol");
+	}
+
+	/**
+	 * Test real device connection will use Https protocol when set port is 443
+	 *
+	 * Expected: It doesn't throw exception
+	 */
+	@Test
+	public void testRealDeviceConnectionWillUseHttpsProtocolWhenSetPortIs443() throws Exception {
+		GudePDU8045Communicator gudePDU8045Communicator = new GudePDU8045Communicator();
+		gudePDU8045Communicator.setHost("***REMOVED***");
+		gudePDU8045Communicator.setPort(443);
+		gudePDU8045Communicator.setProtocol("http");
+		gudePDU8045Communicator.setLogin("admin");
+		gudePDU8045Communicator.setPassword("admin");
+		gudePDU8045Communicator.setTrustAllCertificates(true);
+		gudePDU8045Communicator.setConfigManagement("true");
+		gudePDU8045Communicator.init();
+		gudePDU8045Communicator.connect();
+		Assertions.assertDoesNotThrow(() -> gudePDU8045Communicator.getMultipleStatistics());
 	}
 }
