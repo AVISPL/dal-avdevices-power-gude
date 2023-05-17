@@ -6,7 +6,7 @@
 
     <groupId>com.avispl.symphony.dal.avdevices.power.gude</groupId>
     <artifactId>symphony-dal-avdevices-power-gude</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 
     <build>
         <plugins>
