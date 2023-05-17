@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.RoundingMode;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -39,11 +40,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.security.auth.login.FailedLoginException;
-import org.apache.http.Header;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.conn.HttpHostConnectException;
 
 import com.avispl.symphony.api.dal.control.Controller;
@@ -438,29 +434,34 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	@Override
 	public String doGet(String uri) throws Exception {
 		URL url = new URL(uri);
-		HttpsURLConnection connection = createHttpsConnection(url);
+		HttpURLConnection connection = createConnection(url);
 		addRequestHeaders(connection);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Performing a GET operation for " + uri);
 		}
+		handleResponseStatus(connection);
 		String response = getResponse(connection);
-		handleResponseStatus(connection.getResponseCode(), response);
 		connection.disconnect();
 		return response;
 	}
 
 	/**
-	 * Create Https Connection trust all SSL certificates
+	 * Create Https Connection trust all SSL certificates or Http Connection
 	 *
 	 * @param url url of the request
 	 * @return Https Connection
 	 * @throws IOException when the connection can not connect
 	 */
-	private HttpsURLConnection createHttpsConnection(URL url) throws IOException {
-		HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+	private HttpURLConnection createConnection(URL url) throws IOException {
+		HttpURLConnection connection;
+		if (this.getProtocol().equalsIgnoreCase("https")) {
+			connection = (HttpsURLConnection) url.openConnection();
+			((HttpsURLConnection) connection).setSSLSocketFactory(sslContext.getSocketFactory());
+			((HttpsURLConnection) connection).setHostnameVerifier((hostname, session) -> hostname.equals(getHost()));
+		} else {
+			connection = (HttpURLConnection) url.openConnection();
+		}
 		connection.setRequestMethod(HttpMethod.GET.name());
-		connection.setSSLSocketFactory(sslContext.getSocketFactory());
-		connection.setHostnameVerifier((hostname, session) -> hostname.equals(getHost()));
 		return connection;
 	}
 
@@ -469,7 +470,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 *
 	 * @param connection connection need to add request headers
 	 */
-	private void addRequestHeaders(HttpsURLConnection connection) {
+	private void addRequestHeaders(HttpURLConnection connection) {
 		if (StringUtils.isNotNullOrEmpty(configCookie)) {
 			connection.setRequestProperty(HttpHeaders.COOKIE, WebClientConstant.COOKIE_FIELD + configCookie);
 		}
@@ -488,7 +489,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @return response of connection
 	 * @throws IOException when can not read response
 	 */
-	private String getResponse(HttpsURLConnection connection) throws IOException {
+	private String getResponse(HttpURLConnection connection) throws IOException {
 		try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
 			StringBuilder response = new StringBuilder();
 			String inputLine;
@@ -502,11 +503,11 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	/**
 	 * Handle response status
 	 *
-	 * @param statusCode status code of response
-	 * @param response response of connection
+	 * @param connection connection to get response
 	 * @throws Exception if status authorize, bad request, request timeout, etc,...
 	 */
-	private void handleResponseStatus(int statusCode, String response) throws Exception {
+	private void handleResponseStatus(HttpURLConnection connection) throws Exception {
+		int statusCode = connection.getResponseCode();
 		if (!HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
 			if (HttpStatus.UNAUTHORIZED.value() == statusCode) {
 				throw new FailedLoginException("Failed to login, please check the username and password");
@@ -517,7 +518,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			if (HttpStatus.REQUEST_TIMEOUT.value() == statusCode) {
 				throw new TimeoutException("Request time out");
 			}
-			throw new CommandFailureException(getHost(), getHost(), response);
+			throw new CommandFailureException(getHost(), getHost(), connection.getResponseMessage());
 		}
 	}
 
@@ -551,22 +552,20 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private void login() {
 		try {
-			HttpClient httpClient = this.obtainHttpClient(true);
-			HttpGet httpGet = new HttpGet(buildDeviceFullPath(DeviceURL.FIRST_LOGIN));
-			HttpResponse response = null;
-
-			try {
-				response = httpClient.execute(httpGet);
-			} finally {
-				if (response instanceof CloseableHttpResponse) {
-					((CloseableHttpResponse) response).close();
-				}
+			URL url = new URL(buildDeviceFullPath(DeviceURL.FIRST_LOGIN));
+			HttpURLConnection connection = createConnection(url);
+			addRequestHeaders(connection);
+			if (logger.isDebugEnabled()) {
+				logger.debug("Performing a login operation for " + url);
 			}
+			Map<String, List<String>> headers = connection.getHeaderFields();
+			int statusCode = connection.getResponseCode();
+			connection.disconnect();
 
-			Header header = response.getFirstHeader(DeviceConstant.WWW_AUTHENTICATE);
-			if (header != null) {
-				String headerResponseString = response.getFirstHeader(DeviceConstant.WWW_AUTHENTICATE).toString();
-				if (response.getStatusLine().getStatusCode() == HttpStatus.UNAUTHORIZED.value() && StringUtils.isNotNullOrEmpty(headerResponseString)) {
+			List<String> header = headers.get(DeviceConstant.WWW_AUTHENTICATE);
+			if (header != null && !header.isEmpty()) {
+				String headerResponseString = header.get(0);
+				if (statusCode == HttpStatus.UNAUTHORIZED.value() && StringUtils.isNotNullOrEmpty(headerResponseString)) {
 					AuthorizationChallengeHandler authorizationChallengeHandler = new AuthorizationChallengeHandler(getLogin(), getPassword());
 					List<Map<String, String>> challenges = new ArrayList<>();
 					Map<String, String> challenge = authorizationChallengeHandler.parseAuthenticationOrAuthorizationHeader(headerResponseString);
@@ -592,10 +591,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 */
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
-		if (path.equals(DeviceURL.FIRST_LOGIN)) {
-			return DeviceConstant.HTTP + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
-		}
-		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + path;
+		return this.getProtocol() + DeviceConstant.SCHEME_SEPARATOR + this.host + DeviceConstant.COLON + this.getPort() + path;
 	}
 
 	/**
