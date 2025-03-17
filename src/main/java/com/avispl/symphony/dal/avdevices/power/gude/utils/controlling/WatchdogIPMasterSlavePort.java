@@ -57,7 +57,7 @@ public enum WatchdogIPMasterSlavePort {
 	 * @return WatchdogResetPortWhenHostDownMode is the watchdog reset port when host down mode that want to get
 	 */
 	public static WatchdogIPMasterSlavePort getByUIName(String uiName) {
-		return Arrays.stream(WatchdogIPMasterSlavePort.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(WatchdogIPMasterSlavePort.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 }

@@ -77,7 +77,7 @@ public enum PowerPortConfigMetric {
 	 * @return PowerPorConfigMetric power port config metric
 	 */
 	public static PowerPortConfigMetric getByUIName(String uiName) {
-		return Arrays.stream(PowerPortConfigMetric.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(PowerPortConfigMetric.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 }

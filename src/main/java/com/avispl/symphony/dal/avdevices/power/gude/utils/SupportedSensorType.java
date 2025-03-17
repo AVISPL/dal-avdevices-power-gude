@@ -72,7 +72,7 @@ public enum SupportedSensorType {
 	 */
 	public static Set<Integer> getSupportedSensorTypesCode() {
 		Set<Integer> supportedSensorTypes = new HashSet<>();
-		for (SupportedSensorType supportedSensorType : SupportedSensorType.values()) {
+		for (SupportedSensorType supportedSensorType : values()) {
 			supportedSensorTypes.add(supportedSensorType.getCode());
 		}
 		return supportedSensorTypes;
@@ -84,7 +84,7 @@ public enum SupportedSensorType {
 	 * @return SupportedSensorType matched supportedSensorType
 	 */
 	public static SupportedSensorType getSupportedSensorTypeByCode(int code) {
-		return Arrays.stream(SupportedSensorType.values()).filter(type -> type.getCode() == code).findFirst().orElse(ERROR);
+		return Arrays.stream(values()).filter(type -> type.getCode() == code).findFirst().orElse(ERROR);
 	}
 }
 

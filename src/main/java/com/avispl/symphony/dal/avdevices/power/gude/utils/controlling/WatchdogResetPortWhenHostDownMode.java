@@ -57,7 +57,7 @@ public enum WatchdogResetPortWhenHostDownMode {
 	 * @return WatchdogResetPortWhenHostDownMode is the watchdog reset port when host down mode that want to get
 	 */
 	public static WatchdogResetPortWhenHostDownMode getByUIName(String uiName) {
-		return Arrays.stream(WatchdogResetPortWhenHostDownMode.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(WatchdogResetPortWhenHostDownMode.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 	/**
@@ -67,7 +67,7 @@ public enum WatchdogResetPortWhenHostDownMode {
 	 * @return WatchdogResetPortWhenHostDownMode is the watchdog reset port when host down mode that want to get
 	 */
 	public static WatchdogResetPortWhenHostDownMode getByAPIName(String apiName) {
-		return Arrays.stream(WatchdogResetPortWhenHostDownMode.values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(WatchdogResetPortWhenHostDownMode.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(ERROR);
 	}
 }
 

@@ -51,7 +51,7 @@ public enum DeviceInfoMetric {
 	 * @return DeviceInfoMetric is the device info metric that want to get
 	 */
 	public static DeviceInfoMetric getByName(String name) {
-		Optional<DeviceInfoMetric> deviceInfoMetric = Arrays.stream(DeviceInfoMetric.values()).filter(metric -> metric.getName().equals(name)).findFirst();
+		Optional<DeviceInfoMetric> deviceInfoMetric = Arrays.stream(values()).filter(metric -> metric.getName().equals(name)).findFirst();
 		if (deviceInfoMetric.isPresent()) {
 			return deviceInfoMetric.get();
 		} else {
