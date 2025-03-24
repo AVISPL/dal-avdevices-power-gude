@@ -57,7 +57,7 @@ public enum WaitingTimeUnit {
 	 * @return WaitingTimeUnit is the WaitingTimeUnit mode that want to get
 	 */
 	public static WaitingTimeUnit getByUIName(String uiName) {
-		return Arrays.stream(WaitingTimeUnit.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(WaitingTimeUnit.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 }

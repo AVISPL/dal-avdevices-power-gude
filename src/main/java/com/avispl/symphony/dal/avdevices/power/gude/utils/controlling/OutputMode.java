@@ -58,7 +58,7 @@ public enum OutputMode {
 	 * @return OutputMode is the output mode that want to get
 	 */
 	public static OutputMode getByUIName(String uiName) {
-		return Arrays.stream(OutputMode.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(OutputMode.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 	/**
@@ -68,7 +68,7 @@ public enum OutputMode {
 	 * @return OutputMode is the output mode that want to get
 	 */
 	public static OutputMode getByAPIName(String apiName) {
-		return Arrays.stream(OutputMode.values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(OutputMode.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(ERROR);
 	}
 }
 

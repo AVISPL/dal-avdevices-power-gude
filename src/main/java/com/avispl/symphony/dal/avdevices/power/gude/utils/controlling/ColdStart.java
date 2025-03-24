@@ -58,7 +58,7 @@ public enum ColdStart {
 	 * @return ColdStart is the cold start status that want to get
 	 */
 	public static ColdStart getByUIName(String uiName) {
-		return Arrays.stream(ColdStart.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ColdStart.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 	/**
@@ -68,7 +68,7 @@ public enum ColdStart {
 	 * @return ColdStart is the cold start status that want to get
 	 */
 	public static ColdStart getByAPIName(String apiName) {
-		return Arrays.stream(ColdStart.values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(ColdStart.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(ERROR);
 	}
 }
 
