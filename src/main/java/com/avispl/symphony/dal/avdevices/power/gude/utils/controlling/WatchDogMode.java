@@ -69,7 +69,7 @@ public enum WatchDogMode {
 	 * @return WatchDogMode is the watchdog status mode that want to get
 	 */
 	public static WatchDogMode getByUIName(String uiName) {
-		return Arrays.stream(WatchDogMode.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(WatchDogMode.RESET_PORT_WHEN_HOST_DOWN);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(RESET_PORT_WHEN_HOST_DOWN);
 	}
 
 	/**
@@ -79,7 +79,7 @@ public enum WatchDogMode {
 	 * @return WatchDogMode is the watchdog status mode that want to get
 	 */
 	public static WatchDogMode getByAPIName(String apiName) {
-		return Arrays.stream(WatchDogMode.values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(WatchDogMode.RESET_PORT_WHEN_HOST_DOWN);
+		return Arrays.stream(values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(RESET_PORT_WHEN_HOST_DOWN);
 	}
 }
 

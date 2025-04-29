@@ -56,7 +56,7 @@ public enum SwitchOnOffStatus {
 	 * @return SwitchOnOffStatus is the switch on/off status that want to get
 	 */
 	public static SwitchOnOffStatus getByUIName(String uiName) {
-		return Arrays.stream(SwitchOnOffStatus.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(SwitchOnOffStatus.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 	/**
@@ -66,7 +66,7 @@ public enum SwitchOnOffStatus {
 	 * @return SwitchOnOffStatus is the switch on/off status that want to get
 	 */
 	public static SwitchOnOffStatus getByAPIName(String apiName) {
-		return Arrays.stream(SwitchOnOffStatus.values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(SwitchOnOffStatus.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(ERROR);
 	}
 }
 

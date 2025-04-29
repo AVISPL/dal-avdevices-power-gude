@@ -57,7 +57,7 @@ public enum WatchdogPingType {
 	 * @return OnOffStatus is the ping type status that want to get
 	 */
 	public static WatchdogPingType getByUIName(String uiName) {
-		return Arrays.stream(WatchdogPingType.values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(WatchdogPingType.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getUiName().equals(uiName)).findFirst().orElse(ERROR);
 	}
 
 	/**
@@ -67,7 +67,7 @@ public enum WatchdogPingType {
 	 * @return PingType is the ping type status that want to get
 	 */
 	public static WatchdogPingType getByAPIName(String apiName) {
-		return Arrays.stream(WatchdogPingType.values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(WatchdogPingType.ERROR);
+		return Arrays.stream(values()).filter(status -> status.getApiName().equals(apiName)).findFirst().orElse(ERROR);
 	}
 }
 

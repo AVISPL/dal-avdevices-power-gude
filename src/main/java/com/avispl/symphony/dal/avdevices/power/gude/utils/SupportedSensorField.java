@@ -73,7 +73,7 @@ public enum SupportedSensorField {
 	 */
 	public static Map<String, String> getSupportedSensorFields() {
 		Map<String, String> supportedSensorFields = new HashMap<>();
-		for (SupportedSensorField supportedSensorField : SupportedSensorField.values()) {
+		for (SupportedSensorField supportedSensorField : values()) {
 			supportedSensorFields.put(supportedSensorField.getApiName(), supportedSensorField.getUiName());
 		}
 		return supportedSensorFields;
