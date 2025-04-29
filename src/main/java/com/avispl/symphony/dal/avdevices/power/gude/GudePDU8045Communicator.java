@@ -671,6 +671,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						cachedMonitoringStatus.getOutputs().get(indexOfSensorProperty).setGroupName(groupName);
 						break;
 					case SENSOR_7106:
+					case SENSOR_7106_2:
 						int sensorOrdinal = DeviceConstant.FIRST_ORDINAL;
 						if (properties.get(indexOfSensorProperty).getRealId() != null) {
 							sensorOrdinal = properties.get(indexOfSensorProperty).getRealId() + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
@@ -851,6 +852,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						for (SensorProperty property : sensorDescription.getProperties()) {
 							switch (supportedSensorType) {
 								case SENSOR_7106:
+								case SENSOR_7106_2:
 									int sensorOrdinal = DeviceConstant.FIRST_ORDINAL;
 									if (property.getRealId() != null) {
 										sensorOrdinal = property.getRealId() + DeviceConstant.INDEX_TO_ORDINAL_CONVERT_FACTOR;
