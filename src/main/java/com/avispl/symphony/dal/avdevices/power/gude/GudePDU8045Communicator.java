@@ -1002,7 +1002,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				unusedKeys.add(groupName.concat(OutputControllingMetric.POWER_PORT_BATCH_WAITING_TIME_REMAINING_05));
 			}
 
-			stats.put(groupName.concat(OutputControllingMetric.EDITED), toPascalCase(String.valueOf(isOutputsControlEdited.get(outputIndex))));
+			stats.put(groupName.concat(OutputControllingMetric.EDITED), String.valueOf(isOutputsControlEdited.get(outputIndex)));
 			stats.put(powerPortStatusLabel, getDefaultValueForNullData(outputStatus.getUiName(), DeviceConstant.NONE));
 			addAdvanceControlProperties(advancedControllableProperties, stats, createDropdown(powerPortLabel, outputModes, outputMode.getUiName()));
 		}
@@ -1255,7 +1255,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 				createSwitch(countPingRequestLabel, powerPortComponentConfig.getCountPingRequest().equals(OnOffStatus.ON), DeviceConstant.DISABLE, DeviceConstant.ENABLE));
 		addAdvanceControlProperties(advancedControllableProperties, stats, createButton(applyChangesLabel, DeviceConstant.APPLY, DeviceConstant.APPLYING));
 		addAdvanceControlProperties(advancedControllableProperties, stats, createButton(cancelChanges, DeviceConstant.CANCEL, DeviceConstant.CANCELING));
-		stats.put(editedLabel, toPascalCase(String.valueOf(isPowerPortConfigEdited)));
+		stats.put(editedLabel, String.valueOf(isPowerPortConfigEdited));
 		removeUnusedStatsAndControls(stats, advancedControllableProperties, unusedKeys);
 	}
 
@@ -1506,7 +1506,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 		button.setLabel(label);
 		button.setLabelPressed(labelPressed);
 		button.setGracePeriod(0L);
-		return new AdvancedControllableProperty(name, new Date(), button, DeviceConstant.EMPTY);
+		return new AdvancedControllableProperty(name, new Date(), button, "N/A");
 	}
 
 	/**
