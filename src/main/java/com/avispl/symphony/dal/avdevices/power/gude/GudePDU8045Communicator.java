@@ -575,12 +575,13 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 						authorizationHeader = authorizationChallengeHandler.handleBasic();
 					}
 				} else {
-					throw new FailedLoginException("Login failed: invalid username or password");
+					throw new FailedLoginException(DeviceConstant.FAIL_TO_LOGIN_MSG);
 				}
 			}
 		} catch (ConnectException e) {
 			throw new ResourceNotReachableException(String.format("Error while connecting to %s: %s", host, e.getMessage()), e);
 		} catch (FailedLoginException e) {
+			logger.error(DeviceConstant.FAIL_TO_LOGIN_MSG);
 			throw e;
 		} catch (Exception e) {
 			throw new ResourceNotReachableException(e.getMessage(), e);
