@@ -550,7 +550,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	/**
 	 * This method is used to log in to the camera including the Basic and Digest authentication methods
 	 */
-	private void login() {
+	private void login() throws FailedLoginException {
 		try {
 			URL url = new URL(buildDeviceFullPath(DeviceURL.FIRST_LOGIN));
 			HttpURLConnection connection = createConnection(url);
@@ -574,10 +574,15 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 					if (headerResponseString.contains(DeviceConstant.BASIC)) {
 						authorizationHeader = authorizationChallengeHandler.handleBasic();
 					}
+				} else {
+					throw new FailedLoginException(DeviceConstant.FAIL_TO_LOGIN_MSG);
 				}
 			}
 		} catch (ConnectException e) {
 			throw new ResourceNotReachableException(String.format("Error while connecting to %s: %s", host, e.getMessage()), e);
+		} catch (FailedLoginException e) {
+			logger.error(DeviceConstant.FAIL_TO_LOGIN_MSG);
+			throw e;
 		} catch (Exception e) {
 			throw new ResourceNotReachableException(e.getMessage(), e);
 		}
@@ -602,7 +607,7 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 	 * @param advancedControllableProperties store all controllable properties
 	 * @throws FailedLoginException when login fails
 	 */
-	private void retrieveDeviceMonitoringData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) {
+	private void retrieveDeviceMonitoringData(Map<String, String> stats, List<AdvancedControllableProperty> advancedControllableProperties) throws FailedLoginException {
 		String request = buildDeviceFullPath(DeviceURL.DEVICE_MONITORING);
 		try {
 			cachedMonitoringStatus = doGetWithRetryOnUnauthorized(request, DeviceMonitoringData.class, true);
@@ -611,7 +616,10 @@ public class GudePDU8045Communicator extends RestCommunicator implements Monitor
 			} else {
 				throw new ResourceNotReachableException("Error while retrieving Device and Sensor data: response data is empty");
 			}
-		} catch (Exception e) {
+		} catch (FailedLoginException e) {
+			throw e;
+		}
+		catch (Exception e) {
 			throw new ResourceNotReachableException(String.format("Error while retrieving Device and Sensor data: %s", e.getMessage()), e);
 		}
 	}
