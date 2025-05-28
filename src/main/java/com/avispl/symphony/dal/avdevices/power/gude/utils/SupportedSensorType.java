@@ -18,6 +18,7 @@ public enum SupportedSensorType {
 
 	METER("Meter", 9, true),
 	SENSOR_7106("Sensor7106", 53, true),
+	SENSOR_7106_2("Sensor7106", 52, true),
 	POWER_PORT("PowerPort", 8, false),
 	ERROR("PowerPort", -1, false);
 

@@ -50,6 +50,16 @@ class GudePDU8045CommunicatorTest {
 		communicator.disconnect();
 	}
 
+	@Test
+	void testMonitor() throws Exception {
+		communicator.setHistoricalProperties("Current(mA), PowerActive(W), PowerReactive(VAR), PowerApparent(VA), Temperature(C), Humidity(%), DewPoint(C)");
+		ExtendedStatistics statistics = (ExtendedStatistics) communicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = statistics.getStatistics();
+		Map<String, String> dynamic = statistics.getDynamicStatistics();
+
+		Assertions.assertEquals(50, stats.size());
+	}
+
 	/**
 	 * Test GudePDU8045Communicator.controlProperty advance monitoring control
 	 *
