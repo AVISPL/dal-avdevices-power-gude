@@ -12,10 +12,10 @@ Main features are: per-outlet power switching and reset, energy metering per por
 - **Inventory** PDU firmware version, device name, and port-level details
 
 ## Gude PDU - Supported Models
-- 8045 series: 8045-1, 8045-2
-- 8031 series: 8031-1, 8031-2, 8031-3, 8031-4
+- 8045 series
+- 8031 series
 
-**Note:** PowerPort per-port monitoring (energy metering) is not supported on 8031 series models.
+**Note:** Available monitoring and control capabilities depend on the PDU model. PowerPort per-port monitoring (energy metering) is not supported on 8031 series models.
 
 ## Gude PDU Device Configuration
 
@@ -53,7 +53,9 @@ For detailed information on the adapter and its configuration, please refer to o
 | SensorPort(ID) | Environmental readings from connected sensors: Temperature(C), Humidity(%), DewPoint(C) |
 | BuzzerStatus | PDU buzzer on/off state (via SNMP property) |
 
-Historical/graphable properties (when configured via `historicalProperties`): temperature, humidity, dew point, active power, apparent power, current, reactive power. Graphs are supported for SensorPort01 and MeterL1 only.
+Historical/graphable properties (when configured via `historicalProperties`): temperature, humidity, dew point, active power, apparent power, current, reactive power.
+- Sensor graphs (Temperature, DewPoint, Humidity) require an optional sensor connected to **Sensor 1 port** and the PDU model must support optional sensors.
+- Power graphs (PowerActive, PowerApparent, Current, PowerReactive) require the PDU model to support metering functions.
 
 ## Gude PDU - Control Capabilities
 
